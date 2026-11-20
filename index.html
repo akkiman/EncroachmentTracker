@@ -786,6 +786,14 @@ function openView(p) {
 }
 /* ---- PMC complaint portal (complaint.pmc.gov.in): text to paste, then record the complaint number ---- */
 const PORTAL_URL = 'https://complaint.pmc.gov.in/login';
+const PORTAL_DAYS = 7; // the portal's expected resolution time
+function addDays(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+// Latest portal filing, read from the history line: "YYYY-MM-DD: complaint filed on PMC portal (ref X, due YYYY-MM-DD, by Y)"
+function portalInfo(p) {
+  let r = null;
+  (p.history || []).forEach(h => { const m = String(h).match(/^(\d{4}-\d{2}-\d{2}): (?:complaint filed on PMC portal|portal complaint number updated) \(ref ([^,)]+)(?:, due (\d{4}-\d{2}-\d{2}))?/); if (m) r = {date: m[1], ref: m[2], due: m[3] || addDays(m[1], PORTAL_DAYS)}; });
+  return r;
+}
 function portalCat(p) {
   const d = (p.desc_en || '').toLowerCase();
   if (p.category === 'flex') return {cat: 'Unauthorized hoardigs banners / advertisements on roads / footpath / buildings / directions panels', sub: 'the closest option in the list'};
@@ -811,7 +819,7 @@ function portalPanel(p) {
     <div class="hint" style="margin:4px 0">Category: <b>${esc(pc.cat)}</b><br>Complaint type: <b>${esc(pc.sub)}</b><br>Office: choose the Shivajinagar-Ghole Road Ward Office</div>
     <div><button data-pt="desc">Copy description</button> <button data-pt="addr">Copy address</button> <button data-pt="land">Copy landmark</button> ${img ? `<a href="${esc(img.url)}" target="_blank" download><button type="button">Open photo (attach 1)</button></a>` : '<span class="hint">No approved photo yet.</span>'}</div>
     <div style="margin-top:6px"><button data-pt="open">Open portal</button> <button data-pt="filed">${filed ? 'Update complaint number' : 'I filed it: save the number'}</button></div>
-    <div class="hint" style="margin-top:4px">The portal takes one photo (jpg, png or pdf, up to 3 MB) and 2000 characters. Log in with your mobile OTP and paste. Saving the number here starts the ${REMIND_DAYS}-day reminder count.</div>
+    <div class="hint" style="margin-top:4px">The portal takes one photo (jpg, png or pdf, up to 3 MB) and 2000 characters. Log in with your mobile OTP and paste. Saving the number here sets a reminder for the portal's expected resolution date (about ${PORTAL_DAYS} days).</div>
     <input type="hidden" id="ptAddr" value="${esc(addr)}"></details>`;
 }
 function bindPortal(p) {
@@ -825,9 +833,11 @@ function bindPortal(p) {
     if (k === 'filed') {
       const ref = (prompt('PMC portal complaint number (shown after you submit):', p.pmc_ref || '') || '').trim(); if (!ref) return;
       const np = clone(p), day = todayISO(), who = me() || 'someone', again = portalFiled(p);
+      const dd = (prompt('Expected resolution date shown on the portal (YYYY-MM-DD), or leave as is:', addDays(day, PORTAL_DAYS)) || addDays(day, PORTAL_DAYS)).trim();
+      const due = /^\d{4}-\d{2}-\d{2}$/.test(dd) ? dd : addDays(day, PORTAL_DAYS);
       np.pmc_ref = ref; if (!np.complaint_date) np.complaint_date = day; if (np.status === 'draft') np.status = 'reported';
-      np.history = (np.history || []).concat([`${day}: ${again ? 'portal complaint number updated' : 'complaint filed on PMC portal'} (ref ${ref}, by ${who})`]);
-      try { updateProp(await API.save(np)); toast('Saved. Reminders will count from today.'); } catch (e) { toast('Could not save: ' + e.message, 6000); }
+      np.history = (np.history || []).concat([`${day}: ${again ? 'portal complaint number updated' : 'complaint filed on PMC portal'} (ref ${ref}, due ${due}, by ${who})`]);
+      try { updateProp(await API.save(np)); toast('Saved. A reminder will be due on ' + due + ' if PMC has not acted.'); } catch (e) { toast('Could not save: ' + e.message, 6000); }
     }
   });
 }
@@ -1276,7 +1286,8 @@ function rowsFor(props, lang, type) {
     const obs = lang === 'mr' ? (p.desc_mr || (CATS[p.category] || CATS.other).mr) : (p.desc_en || (CATS[p.category] || CATS.other).en);
     const road = lang === 'mr' ? roadMr(p.road) : (p.road || '-');
     const ver = (VER[p.verification] || VER.pending)[lang];
-    const ref = type === 'reminder' ? (lang === 'mr' ? mrD(p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateMR(p.complaint_date) : '') : (p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateEN(p.complaint_date) : '')) : null;
+    const pi = portalInfo(p), pTag = pi ? (lang === 'mr' ? ' (PMC पोर्टल)' : ' (PMC portal)') : '';
+    const ref = type === 'reminder' ? (lang === 'mr' ? mrD(p.pmc_ref || '-') + pTag + (p.complaint_date ? ' / ' + fmtDateMR(p.complaint_date) : '') : (p.pmc_ref || '-') + pTag + (p.complaint_date ? ' / ' + fmtDateEN(p.complaint_date) : '')) : null;
     const n = lang === 'mr' ? mrD(i + 1) : (i + 1);
     return `<tr><td>${n}</td><td>${esc(name)}</td><td>${esc(road)}</td><td>${esc(obs)}</td><td>${esc(imgTxt)}</td><td>${esc(ver)}</td>${ref !== null ? `<td>${esc(ref)}</td>` : ''}</tr>`;
   }).join('');
@@ -1295,10 +1306,15 @@ function followUp(p) {
   const closed = ['action_taken', 'regularised', 'closed'].includes(p.status);
   const days = daysSince(last);
   const sentAny = !!first;
-  return {sent: sentAny, reminders, first, last, days, closed, due: sentAny && !closed && days != null && days >= REMIND_DAYS};
+  const po = portalInfo(p);
+  const portalOnly = !!po && sent.length && sent.map(x => x.d).sort().pop() <= po.date && !sent.some(x => x.t === 'reminder' && x.d > po.date);
+  const dueByPortal = portalOnly ? daysSince(po.due) : null;
+  const due = sentAny && !closed && (portalOnly ? (dueByPortal != null && dueByPortal >= 0) : (days != null && days >= REMIND_DAYS));
+  return {sent: sentAny, reminders, first, last, days, closed, due, portalOnly, portalDue: po ? po.due : '', portalRef: po ? po.ref : ''};
 }
 function followChip(p) {
   const f = followUp(p); if (!f.sent || f.closed) return '';
+  if (f.portalOnly) return f.due ? badge(`Portal deadline passed (${f.portalDue}): reminder due`, 'st', 'background:#b42318') : badge(`Portal complaint, due ${f.portalDue}`, 'st', 'background:#b25e09');
   return f.due ? badge(`Reminder due: ${f.days} days since last letter`, 'st', 'background:#b42318') : badge(`Letter sent ${f.days} day(s) ago`, 'st', 'background:#b25e09');
 }
 function reminderInfo(props) {
@@ -1310,7 +1326,7 @@ function renderFollow() {
   const box = $('#lFollow'); if (!box) return;
   const fs = state.props.map(p => [p, followUp(p)]).filter(([p, f]) => f.sent && !f.closed);
   const due = fs.filter(([p, f]) => f.due);
-  box.innerHTML = fs.length ? `<b>Follow-up:</b> ${fs.length} entr${fs.length === 1 ? 'y' : 'ies'} awaiting PMC action, <b style="color:${due.length ? '#b42318' : 'inherit'}">${due.length} due for a reminder</b> (${REMIND_DAYS}+ days since the last letter). ${due.length ? '<button type="button" id="lSelDue" class="primary">Prepare reminder for these</button>' : ''}` : '<b>Follow-up:</b> no letters marked as sent yet. After sending a letter, use "Mark these as sent to PMC" and the app will remind you when a follow-up is due.';
+  box.innerHTML = fs.length ? `<b>Follow-up:</b> ${fs.length} entr${fs.length === 1 ? 'y' : 'ies'} awaiting PMC action, <b style="color:${due.length ? '#b42318' : 'inherit'}">${due.length} due for a reminder</b> (${REMIND_DAYS}+ days since the last letter, or past the portal's expected date). ${due.length ? '<button type="button" id="lSelDue" class="primary">Prepare reminder for these</button>' : ''}` : '<b>Follow-up:</b> no letters marked as sent yet. After sending a letter, use "Mark these as sent to PMC" and the app will remind you when a follow-up is due.';
   const b = $('#lSelDue'); if (b) b.onclick = () => { $('#lType').value = 'reminder'; $('#lReady').value = 'due'; state.sel.clear(); renderLetterSel(); letterRows().forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); toast('Reminder prepared for ' + state.sel.size + ' entr' + (state.sel.size === 1 ? 'y' : 'ies') + '. Check, then print.', 5000); };
 }
 $('#lMarkSent').onclick = async () => {
