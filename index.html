@@ -112,7 +112,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <button data-view="members" id="navMembers" style="display:none">Members<span id="memBadge" class="badge" style="display:none"></span></button>
     <button data-view="review" id="navReview" style="display:none">Review<span id="rvBadge" class="badge" style="display:none"></span></button>
     <button data-view="audit" id="navAudit" style="display:none">Audit</button>
-    <button data-view="settings">Settings</button>
+    <button data-view="settings" id="navSettings">Settings</button>
   </nav>
   <span id="sync"></span>
   <button id="btnOut" style="display:none">Sign out</button>
@@ -518,6 +518,8 @@ function updateSyncLabel() {
   $('#navMembers').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
   $('#navAudit').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
   $('#navReview').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
+  $('#navSettings').style.display = !remote() || (ss.token && ss.role === 'admin') ? '' : 'none';
+  if (remote() && ss.role !== 'admin' && $('#view-settings').classList.contains('on')) document.querySelector('nav button[data-view=list]').click();
 }
 
 /* ============================================================
@@ -715,7 +717,7 @@ function resizeImage(blob, max = 1400) {
   });
 }
 async function addImageBlob(blob) {
-  try { const dataUrl = await resizeImage(blob); state.pending.push({existing:false, key:uid(), dataUrl, date:'', source:'Google Street View', caption:''}); renderImgRows(); }
+  try { const dataUrl = await resizeImage(blob); state.pending.push({existing:false, key:uid(), dataUrl, date:'', source:'Own photo', caption:''}); renderImgRows(); }
   catch (e) { toast(e.message); }
 }
 $('#eAddImg').onclick = () => $('#eFile').click();
@@ -844,12 +846,12 @@ function roadFrom(text) { return /prabhat/i.test(text || '') ? 'Prabhat Road' : 
 function openPhoto() { photo.items = []; renderPhotos(); $('#dlgPhoto').showModal(); }
 
 async function addPhotoFile(file) {
-  const it = {id: uid(), status: 'reading', entries: [], date: '', source: 'Google Street View', lat: null, lng: null, locText: '', place: null, exif: {}};
+  const it = {id: uid(), status: 'reading', entries: [], date: '', source: 'Own photo', lat: null, lng: null, locText: '', place: null, exif: {}};
   photo.items.push(it); renderPhotos();
   try {
     it.exif = await readExif(file);
     it.dataUrl = await resizeImage(file, 1600);
-    if (it.exif.lat != null) { it.lat = it.exif.lat; it.lng = it.exif.lng; it.locText = it.lat + ', ' + it.lng; it.source = 'Own photo'; }
+    if (it.exif.lat != null) { it.lat = it.exif.lat; it.lng = it.exif.lng; it.locText = it.lat + ', ' + it.lng; }
     if (it.exif.date) it.date = it.exif.date;
     else { const m = (file.name || '').match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])([0-3]\d)(?:[^0-9]|$)/); if (m) { it.date = m[1] + '-' + m[2] + '-' + m[3]; it.dateNote = 'Date taken from the file name'; } }
   } catch (e) { it.status = 'error'; it.error = e.message; renderPhotos(); return; }
@@ -865,7 +867,6 @@ async function analyzeItem(it) {
     const r = (await call('analyze', {mime: m[1], data: m[2], lat: it.lat, lng: it.lng})).result;
     it.place = r.place || null;
     if (r.image_date && !it.date) it.date = r.image_date;
-    if (r.source && SRC[r.source] && it.exif.lat == null) it.source = r.source;
     const gpsRoad = it.place && it.place.road;
     const road = gpsRoad || roadFrom(r.road_guess) || roadFrom(r.road_text);
     const roadSrc = gpsRoad ? 'gps' : (road ? 'ai' : '');
@@ -899,12 +900,13 @@ function renderPhotos() {
           ${it.place && it.place.road ? `<span class="chip ok">Road: ${esc(it.place.road)} (from location)</span>` : ''}
           ${it.dateNote ? `<span class="chip">${esc(it.dateNote)}</span>` : ''}
           ${it.edited ? '<span class="chip ok">Edited</span>' : ''}
+          <button type="button" data-p="pick">Pick on map</button>
           <button type="button" data-p="here">Use my current location</button>
           ${it.status === 'reading' || it.status === 'analyzing' ? '<span class="chip">' + (it.status === 'reading' ? 'Reading photo...' : 'AI is analysing...') + '</span>' : ''}
           <button type="button" data-p="rm" class="danger" style="float:right">Remove photo</button>
           ${it.status === 'error' ? `<div class="hint" style="color:#b42318">${esc(it.error)} <button type="button" data-p="retry">Try again</button></div>` : ''}
           ${it.note ? `<div class="hint">${esc(it.note)}</div>` : ''}
-          ${it.status === 'done' && it.exif.lat == null && it.lat == null ? '<div class="hint">No GPS found in this file. If your camera has location tags on, the photo picker probably removed it. On Android choose the photo through Browse or Files instead of the Photos picker, or paste a Maps link.</div>' : ''}
+          ${it.status === 'done' && it.exif.lat == null && it.lat == null ? '<div class="hint" style="color:#b42318"><b>No location found.</b> Tap <b>Pick on map</b> to drop a pin on the shop, paste a Google Maps link above, or use your current location. (If your camera has location tags on, the photo picker probably removed them. On Android choose the photo through Browse or Files instead of the Photos picker.)</div>' : ''}
         </div>
         ${it.status === 'done' || it.status === 'error' ? it.entries.map((e, i) => `
           <div class="pent ${e.include ? '' : 'off'}" data-i="${i}">
@@ -956,6 +958,10 @@ $('#pList').addEventListener('click', e => {
   if (t.dataset.p === 'retry') analyzeItem(it);
   if (t.dataset.p === 'edit') openEditor(it.dataUrl, url => { it.dataUrl = url; it.edited = true; renderPhotos(); });
   if (t.dataset.p === 'addEntry') { it.entries.push(blankEntry((it.place && it.place.road) || (it.entries[0] && it.entries[0].road) || '')); renderPhotos(); }
+  if (t.dataset.p === 'pick') openPicker(it.lat != null ? {lat: it.lat, lng: it.lng} : null, async (la, ln) => {
+    it.lat = la; it.lng = ln; it.locText = la + ', ' + ln; await geocodePhoto(it); renderPhotos();
+    toast(it.place && it.place.road ? 'Location set. Road: ' + it.place.road + '.' : 'Location set. Please choose the road.', 4000);
+  });
   if (t.dataset.p === 'here') {
     if (!navigator.geolocation) return toast('This browser cannot give your location.');
     toast('Getting your location...');
@@ -1204,9 +1210,11 @@ $('#lDoc').onclick = async () => {
 
 /* Map picker for an entry's location */
 let pickMap = null, pickPin = null;
-function openPicker() {
+let pickCb = null;
+function openPicker(start, cb) {
   if (!window.L) return toast('The map did not load. Check your internet connection.');
-  const lat = parseFloat($('#eLat').value), lng = parseFloat($('#eLng').value), has = !isNaN(lat) && !isNaN(lng);
+  pickCb = cb;
+  const lat = start ? start.lat : NaN, lng = start ? start.lng : NaN, has = !isNaN(lat) && !isNaN(lng);
   $('#dlgPick').showModal();
   setTimeout(() => {
     if (!pickMap) {
@@ -1227,12 +1235,14 @@ function setPin(ll) {
   const p = pickPin.getLatLng(); $('#pkUse').disabled = false; $('#pkInfo').textContent = p.lat.toFixed(6) + ', ' + p.lng.toFixed(6);
 }
 function bindPicker() {
-  $('#ePick').onclick = openPicker;
+  $('#ePick').onclick = () => openPicker({lat: parseFloat($('#eLat').value), lng: parseFloat($('#eLng').value)}, (la, ln) => {
+    $('#eLat').value = la; $('#eLng').value = ln; $('#eMaps').value = `https://www.google.com/maps?q=${la},${ln}`;
+    $('#eMapsMsg').textContent = 'Location set from the map pin.'; detectEditRoad();
+  });
   $('#pkCancel').onclick = $('#pkClose').onclick = () => $('#dlgPick').close();
   $('#pkUse').onclick = () => {
     const p = pickPin.getLatLng(), la = +p.lat.toFixed(6), ln = +p.lng.toFixed(6);
-    $('#eLat').value = la; $('#eLng').value = ln; $('#eMaps').value = `https://www.google.com/maps?q=${la},${ln}`;
-    $('#eMapsMsg').textContent = 'Location set from the map pin.'; $('#dlgPick').close(); detectEditRoad();
+    $('#dlgPick').close(); if (pickCb) pickCb(la, ln);
   };
 }
 
