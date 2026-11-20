@@ -44,7 +44,12 @@ label{display:block;font-size:12px;color:var(--mute);margin:10px 0 3px}
 .bar .grow{flex:1;min-width:180px}
 .split{display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1fr);gap:12px}
 @media(max-width:900px){.split{grid-template-columns:1fr}}
-#map{height:calc(100vh - 190px);min-height:360px;border-radius:12px;border:1px solid var(--line)}
+#map{height:calc(100vh - 235px);min-height:360px;border-radius:12px;border:1px solid var(--line)}
+#mapNote .lg{display:inline-flex;gap:4px;align-items:center;margin-right:10px;white-space:nowrap}
+#mapNote .lg i{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid #fff;box-shadow:0 0 0 1px #0003}
+.pin{filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+.pinlbl{background:#fff;border:1px solid #0003;border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600;box-shadow:none;color:#111}
+.pinlbl:before{display:none}
 #list{display:grid;gap:8px;align-content:start;max-height:calc(100vh - 190px);overflow:auto;padding-right:2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:64px 1fr;gap:10px}
 .thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;background:#e9edf3}
@@ -166,7 +171,10 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <button id="btnCsv">Export CSV</button>
   </div>
   <div class="split">
-    <div id="map"></div>
+    <div>
+      <div id="mapNote" class="hint" style="margin:0 0 6px"></div>
+      <div id="map"></div>
+    </div>
     <div id="list"></div>
   </div>
 </section>
@@ -329,13 +337,13 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     </div>
 
     <div class="g3">
-      <div><label>Plan verification</label><select id="eVer"></select></div>
+      <div><label>PMC verification (only change when PMC has told you)</label><select id="eVer"></select></div>
       <div><label>Status</label><select id="eStatus"></select></div>
       <div><label>Complaint date</label><input type="date" id="eCDate"></div>
     </div>
     <div class="g2">
       <div><label>PMC complaint / reference number</label><input id="eRef"></div>
-      <div><label>Verification note (RTI reply, plan no., etc.)</label><input id="eVerNote"></div>
+      <div><label>Source of PMC's reply (letter ref, RTI reply, plan no., date)</label><input id="eVerNote"></div>
     </div>
   </div>
   <div class="dfoot">
@@ -471,7 +479,7 @@ const CATS = {
   other       :{en:'Other',                   mr:'इतर'}
 };
 const STATUS = {
-  draft         :{en:'Draft (to verify)',  mr:'मसुदा (पडताळणी बाकी)', color:'#8a94a6'},
+  draft         :{en:'Draft (to verify)',  mr:'मसुदा (पडताळणी बाकी)', color:'#f59e0b', badge:'#8a94a6'},
   reported      :{en:'Reported to PMC',    mr:'तक्रार नोंदवली',        color:'#0b5fff'},
   notice_issued :{en:'Notice issued',      mr:'नोटीस दिली',            color:'#b25e09'},
   action_taken  :{en:'Action taken',       mr:'कारवाई झाली',           color:'#0a7d4f'},
@@ -479,9 +487,9 @@ const STATUS = {
   closed        :{en:'Closed',             mr:'बंद',                   color:'#444'}
 };
 const VER = {
-  pending             :{en:'Not yet verified',                      mr:'पडताळणी बाकी'},
-  violation_confirmed :{en:'Verified: not as per sanctioned plan',  mr:'पडताळणी: मंजूर आराखड्याप्रमाणे नाही'},
-  permitted           :{en:'Verified: permitted',                   mr:'पडताळणी: परवानगी आहे'}
+  pending             :{en:'Awaiting PMC verification',               mr:'पुणे मनपाकडून पडताळणी अपेक्षित'},
+  violation_confirmed :{en:'PMC reports: not as per sanctioned plan',  mr:'मनपा कळवते: मंजूर आराखड्याप्रमाणे नाही'},
+  permitted           :{en:'PMC reports: permitted',                mr:'मनपा कळवते: परवानगी आहे'}
 };
 const SRC = {
   'Google Street View':{en:'Google Street View', mr:'गुगल स्ट्रीट व्ह्यू'},
@@ -647,7 +655,7 @@ function filtered() {
     (!q || [p.name, p.name_mr, p.desc_en, p.desc_mr, p.pmc_ref].join(' ').toLowerCase().includes(q)));
 }
 function badge(txt, cls = '', style = '') { return `<span class="badge ${cls}" style="${style}">${esc(txt)}</span>`; }
-function statusBadge(p) { const st = STATUS[p.status] || STATUS.draft; return badge(st.en, 'st', `background:${st.color}`); }
+function statusBadge(p) { const st = STATUS[p.status] || STATUS.draft; return badge(st.en, 'st', `background:${st.badge || st.color}`); }
 
 function renderList() {
   const rows = filtered(), el = $('#list');
@@ -662,7 +670,8 @@ function renderList() {
         <div class="hint">${esc(p.desc_en || '')}</div>
         <div class="row-actions">
           <button data-act="view">View</button><button data-act="edit">Edit</button>
-          ${mapsUrlFor(p) ? `<button data-act="maps">Maps</button>` : ''}
+          ${p.lat != null && p.lng != null && !isNaN(p.lat) ? `<button data-act="locate">Show on map</button>` : `<button data-act="edit" class="primary">Set location</button>`}
+          ${mapsUrlFor(p) ? `<button data-act="maps">Google Maps</button>` : ''}
         </div>
       </div></div>`;
   }).join('');
@@ -671,27 +680,44 @@ $('#list').addEventListener('click', e => {
   const card = e.target.closest('.card'); if (!card) return;
   const p = state.props.find(x => x.id === card.dataset.id); if (!p) return;
   const act = e.target.dataset.act;
-  if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank');
+  if (act === 'locate') locateOnMap(p); else if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank');
   else { openView(p); if (map && p.lat != null) map.setView([p.lat, p.lng], 18); }
 });
 
+function pinIcon(color) {
+  return L.divIcon({className: 'pin', iconSize: [30, 40], iconAnchor: [15, 38], popupAnchor: [0, -34], tooltipAnchor: [0, -34],
+    html: `<svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg"><path d="M15 1C7.3 1 1.5 6.9 1.5 14.2c0 9.7 11.2 21.8 13 23.7.3.3.7.3 1 0 1.8-1.9 13-14 13-23.7C28.5 6.9 22.7 1 15 1z" fill="${color}" stroke="#fff" stroke-width="2.5"/><circle cx="15" cy="14" r="5" fill="#fff"/></svg>`});
+}
+let mapMarkers = {};
 function renderMap() {
   if (!window.L) return;
   if (!map) {
     map = L.map('map').setView([18.5175, 73.8385], 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     layer = L.layerGroup().addTo(map);
+    map.on('zoomend', () => { const show = map.getZoom() >= 17; Object.values(mapMarkers).forEach(m => { if (show) m.openTooltip(); else m.closeTooltip(); }); });
   }
-  layer.clearLayers();
-  const pts = [];
-  filtered().forEach(p => {
-    if (p.lat == null || p.lng == null || isNaN(p.lat)) return;
-    const st = STATUS[p.status] || STATUS.draft;
-    const m = L.circleMarker([p.lat, p.lng], {radius:9, color:'#fff', weight:2, fillColor:st.color, fillOpacity:.95}).addTo(layer);
-    m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br><button onclick="openViewById('${esc(p.id)}')">Details</button>`);
-    pts.push([p.lat, p.lng]);
+  layer.clearLayers(); mapMarkers = {};
+  const pts = [], rows = filtered(), used = {};
+  let missing = 0;
+  rows.forEach(p => {
+    if (p.lat == null || p.lng == null || isNaN(p.lat)) { missing++; return; }
+    const st = STATUS[p.status] || STATUS.draft; used[p.status || 'draft'] = st;
+    const m = L.marker([p.lat, p.lng], {icon: pinIcon(st.color), title: p.name}).addTo(layer);
+    m.bindTooltip(esc(p.name), {permanent: true, direction: 'top', className: 'pinlbl', opacity: 1});
+    m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br>${esc(p.road || '')}<br><button onclick="openViewById('${esc(p.id)}')">Details</button> ${mapsUrlFor(p) ? `<a href="${esc(mapsUrlFor(p))}" target="_blank">Google Maps</a>` : ''}`);
+    mapMarkers[p.id] = m; pts.push([p.lat, p.lng]);
   });
-  if (pts.length && !renderMap.fitted) { map.fitBounds(pts, {padding:[30,30], maxZoom:17}); renderMap.fitted = true; }
+  const lg = Object.values(used).map(st => `<span class="lg"><i style="background:${st.color}"></i>${esc(st.en)}</span>`).join('');
+  $('#mapNote').innerHTML = `${pts.length} of ${rows.length} on the map. ${missing ? `<b>${missing} have no location yet</b> (they show a "Set location" button in the list). ` : ''}<button type="button" id="mapFit" style="padding:1px 8px;font-size:11px">Zoom to all</button><br>${lg}`;
+  const fit = $('#mapFit'); if (fit) fit.onclick = () => { if (pts.length) map.fitBounds(pts, {padding: [40, 40], maxZoom: 17}); };
+  if (pts.length && !renderMap.fitted) { map.fitBounds(pts, {padding:[40,40], maxZoom:17}); renderMap.fitted = true; }
+  setTimeout(() => map.invalidateSize(), 50);
+}
+function locateOnMap(p) {
+  const m = mapMarkers[p.id]; if (!m || !map) return;
+  $('#map').scrollIntoView({behavior: 'smooth', block: 'center'});
+  map.setView(m.getLatLng(), Math.max(map.getZoom(), 18)); m.openPopup();
 }
 window.openViewById = id => { const p = state.props.find(x => x.id === id); if (p) openView(p); };
 
@@ -709,7 +735,7 @@ function openView(p) {
       <div>Road</div><div>${esc(p.road || 'Not set')}</div>
       <div>Category</div><div>${esc((CATS[p.category] || CATS.other).en)}</div>
       <div>Observed</div><div>${esc(p.desc_en || '-')}<br><span class="hint">${esc(p.desc_mr || '')}</span></div>
-      <div>Plan verification</div><div>${esc((VER[p.verification] || VER.pending).en)}${p.verification_note ? '<br><span class="hint">' + esc(p.verification_note) + '</span>' : ''}</div>
+      <div>PMC verification</div><div>${esc((VER[p.verification] || VER.pending).en)}${p.verification_note ? '<br><span class="hint">' + esc(p.verification_note) + '</span>' : ''}</div>
       <div>Complaint</div><div>${p.complaint_date ? esc(fmtDateEN(p.complaint_date)) : '-'}${p.pmc_ref ? ' (Ref: ' + esc(p.pmc_ref) + ')' : ''}</div>
       <div>Location</div><div>${p.lat != null ? esc(p.lat + ', ' + p.lng) : '-'}</div>
       <div>Last update</div><div>${esc(p.updated_by || '')} ${esc((p.updated_at || '').slice(0, 10))}</div>
@@ -1127,7 +1153,6 @@ function issues(p) {
   else if (!okImgs(p).length) out.push('no approved photo yet, left out of letters');
   else if (okImgs(p).some(i => !i.date)) out.push('image date missing');
   if (p.lat == null) out.push('no location');
-  if ((p.verification || 'pending') === 'pending') out.push('plan not verified');
   return out;
 }
 function letterRows() {
@@ -1182,7 +1207,7 @@ function letterEN(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.join(' and ') : 'the area';
   const flex = props.some(p => p.category === 'flex');
-  const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>Plan check</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
+  const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>PMC verification</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
   const to = ['The Assistant Municipal Commissioner', esc(s.rName), esc(s.rOffice), 'Pune Municipal Corporation', esc(s.rAddress)].filter(x => x);
   const subj = type === 'reminder'
     ? `Reminder: action on our complaint dated ${esc(fmtDateEN(earliestComplaint(props)) || '____')}${refsOf(props) ? ' (Ref: ' + esc(refsOf(props)) + ')' : ''} regarding alleged encroachments on ${esc(roadTxt)}`
@@ -1217,7 +1242,7 @@ function letterMR(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.map(roadMr).join(' व ') : 'परिसर';
   const flex = props.some(p => p.category === 'flex');
-  const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>आराखडा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
+  const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>मनपा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
   const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
   const subj = type === 'reminder'
     ? `स्मरणपत्र: दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजीच्या तक्रारीवर${refsOf(props) ? ' (संदर्भ: ' + esc(mrD(refsOf(props))) + ')' : ''} कार्यवाही करणेबाबत (${esc(roadTxt)})`
@@ -1279,8 +1304,7 @@ function renderLetter() {
   const missing = [];
   if (noEvidence) missing.push(noEvidence + ' selected property(ies) left out because no photo is approved yet');
   if (!c.s.cName) missing.push('your name and address (Settings)');
-  const unv = c.props.filter(p => (p.verification || 'pending') === 'pending').length; if (unv) missing.push(unv + ' not yet verified against the sanctioned plan');
-  warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. The letter asks PMC to verify, so unverified items are fine, but check your facts.</div>` : '';
+  warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. Check your facts before sending. The letter only asks PMC to inspect and verify.</div>` : '';
   box.innerHTML = buildLetterHTML(c);
 }
 $('#lPrint').onclick = () => { if (!currentLetterContext().props.length) return toast('Select at least one property.'); window.print(); };
@@ -1585,7 +1609,7 @@ function init() {
   fillSelect($('#eVer'), Object.entries(VER).map(([k, v]) => [k, v.en]));
   fillSelect($('#eStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]));
   $('#lDate').value = todayISO();
-  ['q', 'fRoad', 'fCat', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { renderList(); renderMap(); }));
+  ['q', 'fRoad', 'fCat', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { renderMap.fitted = false; renderList(); renderMap(); }));
   $('#btnAdd').onclick = () => openEdit(null);
   $('#btnRefresh').onclick = loadData;
   $$('nav button').forEach(b => b.onclick = () => {
