@@ -79,6 +79,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 .sel{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
 .sel label{display:flex;gap:8px;align-items:flex-start;margin:0;padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink)}
 .sel input{width:auto;margin-top:3px}
+.sel .grp{display:flex;gap:8px;align-items:center;position:sticky;top:0;background:#f3f6fb;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute)}
+.sel .grp button{padding:1px 8px;font-size:11px;margin-left:auto}
 .issue{color:var(--warn);font-size:11px}
 .paper{background:#fff;color:#000;border:1px solid var(--line);border-radius:6px;padding:22px 26px;font:11pt/1.5 'Noto Sans Devanagari',Inter,Arial,sans-serif;max-height:calc(100vh - 150px);overflow:auto}
 .paper h4{margin:14px 0 6px;font-size:11pt}
@@ -174,12 +176,24 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <div class="panel">
       <b>1. Pick properties</b>
       <div class="bar" style="margin:8px 0 0">
+        <input id="lQ" placeholder="Search name or text" style="flex:1;min-width:140px">
         <select id="lRoad"><option value="">All roads</option></select>
+        <select id="lCat"><option value="">All categories</option></select>
         <select id="lStatus"><option value="">All statuses</option></select>
-        <button id="lAll">Select visible</button>
-        <button id="lNone">Clear</button>
+        <select id="lReady">
+          <option value="">All entries</option>
+          <option value="ready" selected>Ready for a letter (approved photo)</option>
+          <option value="notready">Not ready (needs photo approval)</option>
+          <option value="unreported">Not yet reported (no PMC ref)</option>
+        </select>
       </div>
-      <div id="lSel" class="sel"></div>
+      <div class="bar" style="margin:6px 0 0">
+        <button id="lAll" class="primary">Select all shown</button>
+        <button id="lNone">Select none</button>
+        <label style="display:flex;gap:6px;align-items:center;margin:0;color:var(--ink)"><input type="checkbox" id="lOnlySel" style="width:auto"> Show selected only</label>
+      </div>
+      <div id="lCount" class="hint" style="margin:6px 0 0"></div>
+      <div id="lSel" class="sel" style="max-height:52vh"></div>
       <div id="lWarn"></div>
       <b style="display:block;margin-top:12px">2. Letter options</b>
       <div class="g2">
@@ -343,13 +357,13 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   <div class="dhead"><h2>Add from photos</h2><button id="pClose">Close</button></div>
   <div class="dbody">
     <div class="dropzone" id="pDrop" tabindex="0">Drop photos here, paste screenshots (Ctrl+V), or
-      <button type="button" id="pCam">Take a photo</button>
-      <button type="button" id="pAdd">From Photos / Gallery</button>
-      <button type="button" id="pDoc" class="primary">From Files / Google Drive (keeps location)</button>
+      <button type="button" id="pCam" class="primary">Take a photo now (uses your current location)</button>
+      <button type="button" id="pAdd">Choose from phone (Photos, Files, Drive)</button>
+      <button type="button" id="pDoc">Choose as a file</button>
       <input type="file" id="pCamIn" accept="image/*" capture="environment" hidden>
       <input type="file" id="pFile" accept="image/*" multiple hidden>
-      <input type="file" id="pDocIn" accept=".jpg,.jpeg,.png,.webp,.heic,.heif" multiple hidden>
-      <div class="hint">Several at once is fine. Files / Google Drive keeps the GPS tag, which the Photos picker on Android often removes (you can also pin the spot on a map). A photo taken with Take a photo here has no GPS in most browsers, so use your camera app and pick the file, or drop a pin. Date and GPS are read from the photo when it has them. The AI reads shop names and describes what is visible in English and Marathi. You review everything before it is saved.</div>
+      <input type="file" id="pDocIn" multiple hidden>
+      <div class="hint">Several at once is fine. Take a photo now records where you are standing at that moment, so use it at the shop. Photos you choose from your phone often lose their GPS tag (Android removes it for web pages), so for those you can pin the spot on a map or use your current location. Date and GPS are read from the photo when they are there. The AI reads shop names and describes what is visible in English and Marathi. You review everything before it is saved.</div>
     </div>
     <div id="pList"></div>
   </div>
@@ -883,15 +897,27 @@ function roadFrom(text) { return cleanRoad(text); }
 
 function openPhoto() { photo.items = []; renderPhotos(); $('#dlgPhoto').showModal(); }
 
-async function addPhotoFile(file) {
+function deviceLocation() {
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    navigator.geolocation.getCurrentPosition(p => res({lat: +p.coords.latitude.toFixed(6), lng: +p.coords.longitude.toFixed(6), acc: p.coords.accuracy}), () => res(null), {enableHighAccuracy: true, timeout: 12000, maximumAge: 20000});
+  });
+}
+async function addPhotoFile(file, opts) {
+  opts = opts || {};
   const it = {id: uid(), status: 'reading', entries: [], date: '', source: 'Own photo', lat: null, lng: null, locText: '', place: null, exif: {}};
   photo.items.push(it); renderPhotos();
   try {
     it.exif = await readExif(file);
     it.dataUrl = await resizeImage(file, 1600);
     if (it.exif.lat != null) { it.lat = it.exif.lat; it.lng = it.exif.lng; it.locText = it.lat + ', ' + it.lng; }
+    if (opts.camera && it.exif.lat == null) {
+      const d = await deviceLocation();
+      if (d) { it.lat = d.lat; it.lng = d.lng; it.locText = d.lat + ', ' + d.lng; it.dateNote = 'Location taken from your phone when the photo was captured'; }
+    }
+    if (opts.camera && !it.exif.date) it.date = todayISO();
     if (it.exif.date) it.date = it.exif.date;
-    else { const m = (file.name || '').match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])([0-3]\d)(?:[^0-9]|$)/); if (m) { it.date = m[1] + '-' + m[2] + '-' + m[3]; it.dateNote = 'Date taken from the file name'; } }
+    else if (!it.date) { const m = (file.name || '').match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])([0-3]\d)(?:[^0-9]|$)/); if (m) { it.date = m[1] + '-' + m[2] + '-' + m[3]; it.dateNote = 'Date taken from the file name'; } }
   } catch (e) { it.status = 'error'; it.error = e.message; renderPhotos(); return; }
   await analyzeItem(it);
 }
@@ -1010,8 +1036,9 @@ $('#pList').addEventListener('click', e => {
   }
 });
 $('#pAdd').onclick = () => $('#pFile').click();
-const pickFiles = async e => { for (const f of [...e.target.files]) await addPhotoFile(f); e.target.value = ''; };
-$('#pFile').onchange = pickFiles; $('#pDocIn').onchange = pickFiles; $('#pCamIn').onchange = pickFiles;
+const pickFiles = async e => { for (const f of [...e.target.files].filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name))) await addPhotoFile(f); e.target.value = ''; };
+$('#pFile').onchange = pickFiles; $('#pDocIn').onchange = pickFiles;
+$('#pCamIn').onchange = async e => { for (const f of [...e.target.files]) await addPhotoFile(f, {camera: true}); e.target.value = ''; };
 $('#pCam').onclick = () => $('#pCamIn').click();
 $('#pDoc').onclick = () => $('#pDocIn').click();
 const pDrop = $('#dlgPhoto');
@@ -1100,18 +1127,31 @@ function issues(p) {
   if ((p.verification || 'pending') === 'pending') out.push('plan not verified');
   return out;
 }
-function renderLetterSel() {
-  const road = $('#lRoad').value, st = $('#lStatus').value;
-  const rows = state.props.filter(p => (!road || p.road === road) && (!st || p.status === st));
-  $('#lSel').innerHTML = rows.length ? rows.map(p => {
-    const iss = issues(p);
-    return `<label><input type="checkbox" data-id="${esc(p.id)}" ${state.sel.has(p.id) ? 'checked' : ''}><span>${esc(p.name)} <span class="hint">(${esc(p.road || 'no road')})</span>${p.verification === 'permitted' ? '<br><span class="issue">marked permitted, will be left out</span>' : (iss.length ? `<br><span class="issue">${esc(iss.join(', '))}</span>` : '')}</span></label>`;
-  }).join('') : '<div class="empty" style="margin:8px">No properties.</div>';
+function letterRows() {
+  const q = $('#lQ').value.trim().toLowerCase(), road = $('#lRoad').value, cat = $('#lCat').value, st = $('#lStatus').value, rd = $('#lReady').value, only = $('#lOnlySel').checked;
+  return state.props.filter(p =>
+    (!road || p.road === road) && (!cat || p.category === cat) && (!st || p.status === st) &&
+    (!q || [p.name, p.name_mr, p.desc_en, p.desc_mr, p.pmc_ref].join(' ').toLowerCase().includes(q)) &&
+    (!rd || (rd === 'ready' ? (p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'notready' ? !(p.verification !== 'permitted' && okImgs(p).length > 0) : !p.pmc_ref)) &&
+    (!only || state.sel.has(p.id)));
 }
-$('#lSel').addEventListener('change', e => { const id = e.target.dataset.id; if (!id) return; e.target.checked ? state.sel.add(id) : state.sel.delete(id); renderLetter(); });
-$('#lAll').onclick = () => { $$('#lSel input').forEach(i => { i.checked = true; state.sel.add(i.dataset.id); }); renderLetter(); };
-$('#lNone').onclick = () => { state.sel.clear(); $$('#lSel input').forEach(i => i.checked = false); renderLetter(); };
-['lRoad', 'lStatus'].forEach(id => $('#' + id).addEventListener('change', renderLetterSel));
+function renderLetterSel() {
+  const rows = letterRows(), groups = {};
+  rows.forEach(p => (groups[p.road || 'No road'] = groups[p.road || 'No road'] || []).push(p));
+  $('#lSel').innerHTML = rows.length ? Object.keys(groups).sort().map(r => `<div class="grp">${esc(r)} (${groups[r].length}) <button type="button" data-grp="${esc(r)}">select road</button></div>` + groups[r].map(p => {
+    const iss = issues(p), ok = p.verification !== 'permitted' && okImgs(p).length > 0;
+    return `<label><input type="checkbox" data-id="${esc(p.id)}" ${state.sel.has(p.id) ? 'checked' : ''}><span>${esc(p.name)} <span class="hint">(${esc((CATS[p.category] || CATS.other).en)}${p.pmc_ref ? ', ref ' + esc(p.pmc_ref) : ''})</span> ${ok ? '<span class="revchip approved">ready</span>' : '<span class="revchip pending">not ready</span>'}${p.verification === 'permitted' ? '<br><span class="issue">marked permitted, will be left out</span>' : (iss.length ? `<br><span class="issue">${esc(iss.join(', '))}</span>` : '')}</span></label>`;
+  }).join('')).join('') : '<div class="empty" style="margin:8px">No properties match these filters.</div>';
+  const inLetter = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted' && okImgs(p).length).length;
+  $('#lCount').textContent = `${rows.length} shown, ${state.sel.size} selected, ${inLetter} will go into the letter.`;
+}
+$('#lSel').addEventListener('change', e => { const id = e.target.dataset.id; if (!id) return; e.target.checked ? state.sel.add(id) : state.sel.delete(id); renderLetter(); renderLetterCount(); });
+function renderLetterCount() { const rows = letterRows(); const inLetter = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted' && okImgs(p).length).length; $('#lCount').textContent = `${rows.length} shown, ${state.sel.size} selected, ${inLetter} will go into the letter.`; }
+$('#lSel').addEventListener('click', e => { const b = e.target.closest('button[data-grp]'); if (!b) return; letterRows().filter(p => (p.road || 'No road') === b.dataset.grp).forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); });
+$('#lAll').onclick = () => { letterRows().forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); };
+$('#lNone').onclick = () => { state.sel.clear(); renderLetterSel(); renderLetter(); };
+['lRoad', 'lCat', 'lStatus', 'lReady', 'lOnlySel'].forEach(id => $('#' + id).addEventListener('change', renderLetterSel));
+$('#lQ').addEventListener('input', renderLetterSel);
 ['lType', 'lLang', 'lDate', 'lRef', 'lAnnex'].forEach(id => $('#' + id).addEventListener('change', renderLetter));
 
 function rowsFor(props, lang, type) {
@@ -1520,6 +1560,7 @@ function init() {
   fillSelect($('#fCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]), 'All categories');
   fillSelect($('#fStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
   fillSelect($('#lStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
+  fillSelect($('#lCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]), 'All categories');
   fillRoadSelects();
   ['eRoad', 'bRoad'].forEach(id => $('#' + id).addEventListener('change', ev => { if (ev.target.value === NEW_ROAD) { const t = askNewRoad(); $('#eRoad').innerHTML = roadOpts($('#eRoad').value === NEW_ROAD ? '' : $('#eRoad').value); $('#bRoad').innerHTML = roadOpts($('#bRoad').value === NEW_ROAD ? '' : $('#bRoad').value); ev.target.innerHTML = roadOpts(t); } }));
   fillSelect($('#eCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]));
