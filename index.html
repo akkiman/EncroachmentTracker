@@ -171,6 +171,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <button id="btnBulk">Bulk add names</button>
     <button id="btnRefresh" title="Reload from the sheet">Refresh</button>
     <button id="btnCsv">Export CSV</button>
+    <a href="https://complaint.pmc.gov.in/login" target="_blank" rel="noopener" class="hint" style="align-self:center;white-space:nowrap" title="Optional: only if you have your own account on the PMC portal">PMC complaint portal</a>
   </div>
   <div class="split">
     <div>
@@ -805,13 +806,13 @@ function portalPanel(p) {
   if (!remote()) return '';
   const pc = portalCat(p), img = (p.images || []).find(i => revOf(i) === 'approved'), filed = portalFiled(p);
   const addr = `${p.name}, ${p.road || ''}, Pune`.replace(/, ,/g, ',');
-  return `<div class="portal" style="border:1px solid #d6dbe6;border-radius:8px;padding:10px;margin:12px 0;background:#f8f9fc">
-    <b>PMC complaint portal</b> ${filed ? '<span class="revchip approved">filed</span>' : ''}
+  return `<details class="portal" ${filed ? '' : ''} style="border:1px solid #d6dbe6;border-radius:8px;padding:8px 10px;margin:12px 0;background:#f8f9fc">
+    <summary style="cursor:pointer"><b>PMC complaint portal</b> <span class="hint">(optional, needs your own PMC portal account)</span> ${filed ? '<span class="revchip approved">filed</span>' : ''}</summary>
     <div class="hint" style="margin:4px 0">Category: <b>${esc(pc.cat)}</b><br>Complaint type: <b>${esc(pc.sub)}</b><br>Office: choose the Shivajinagar-Ghole Road Ward Office</div>
     <div><button data-pt="desc">Copy description</button> <button data-pt="addr">Copy address</button> <button data-pt="land">Copy landmark</button> ${img ? `<a href="${esc(img.url)}" target="_blank" download><button type="button">Open photo (attach 1)</button></a>` : '<span class="hint">No approved photo yet.</span>'}</div>
     <div style="margin-top:6px"><button data-pt="open">Open portal</button> <button data-pt="filed">${filed ? 'Update complaint number' : 'I filed it: save the number'}</button></div>
     <div class="hint" style="margin-top:4px">The portal takes one photo (jpg, png or pdf, up to 3 MB) and 2000 characters. Log in with your mobile OTP and paste. Saving the number here starts the ${REMIND_DAYS}-day reminder count.</div>
-    <input type="hidden" id="ptAddr" value="${esc(addr)}"></div>`;
+    <input type="hidden" id="ptAddr" value="${esc(addr)}"></details>`;
 }
 function bindPortal(p) {
   $$('#vBody [data-pt]').forEach(b => b.onclick = async () => {
