@@ -19,6 +19,14 @@ nav button{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:po
 nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
 #sync{margin-left:auto;font-size:12px;color:var(--mute)}
 #authGate{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}#authGate.off{display:none}.authbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;max-width:400px;width:100%}.authbox h2{margin:0 0 6px;font-size:18px}.authbox button{margin-top:12px;margin-right:6px}
+.rvcard{display:grid;grid-template-columns:220px 1fr;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0;background:#fff}
+.rvcard img{width:100%;border-radius:8px;display:block}
+.rvcard textarea{min-height:56px}
+@media(max-width:700px){.rvcard{grid-template-columns:1fr}}
+.revchip{display:inline-block;border-radius:10px;padding:1px 7px;font-size:11px;border:1px solid var(--line)}
+.revchip.approved{background:#e6f6ee;color:var(--ok);border-color:#b7e3cd}.revchip.rejected{background:#fdecea;color:var(--bad);border-color:#f3c0bb}.revchip.pending{background:#fff4e0;color:var(--warn);border-color:#f2d9a8}
+.gallery figcaption button{padding:2px 7px;margin:3px 3px 0 0;font-size:11px}
+#edCanvas{max-width:100%;display:block;margin:0 auto;touch-action:none;cursor:crosshair;border:1px solid var(--line)}
 .badge{background:var(--bad);color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:4px}
 table.mem{width:100%;border-collapse:collapse;background:#fff}table.mem th,table.mem td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}table.mem button{margin:2px 4px 2px 0;padding:4px 8px}
 main{padding:14px 16px;max-width:1500px;margin:0 auto}
@@ -102,6 +110,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <button data-view="list" class="on">Properties</button>
     <button data-view="letter">Letter / पत्र</button>
     <button data-view="members" id="navMembers" style="display:none">Members<span id="memBadge" class="badge" style="display:none"></span></button>
+    <button data-view="review" id="navReview" style="display:none">Review<span id="rvBadge" class="badge" style="display:none"></span></button>
+    <button data-view="audit" id="navAudit" style="display:none">Audit</button>
     <button data-view="settings">Settings</button>
   </nav>
   <span id="sync"></span>
@@ -209,6 +219,24 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   </div>
 </section>
 
+<!-- ================= REVIEW (admin) ================= -->
+<section id="view-review" class="view">
+  <div class="panel">
+    <b>Photos waiting for review</b>
+    <p class="hint">Only approved photos go into letters. Correct the AI text if needed, blur faces or number plates if needed, then approve or reject. A property with no approved photo is left out of letters.</p>
+    <div id="rvList"></div>
+  </div>
+</section>
+
+<!-- ================= AUDIT (admin) ================= -->
+<section id="view-audit" class="view">
+  <div class="panel">
+    <b>Audit trail</b> <button id="auRefresh" style="margin-left:8px">Refresh</button>
+    <p class="hint">The last 300 actions: logins, access changes, photo analyses, uploads, edits and deletions. The full history, including a complete copy of every deleted record, is in the Audit sheet of the data spreadsheet.</p>
+    <div style="overflow-x:auto"><table class="mem"><thead><tr><th>When</th><th>Who</th><th>Action</th><th>Record</th><th>Details</th></tr></thead><tbody id="auBody"></tbody></table></div>
+  </div>
+</section>
+
 <!-- ================= SETTINGS ================= -->
 <section id="view-settings" class="view">
   <div class="g2">
@@ -274,6 +302,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
       <div><label>Longitude</label><input id="eLng" inputmode="decimal"></div>
       <div><label>&nbsp;</label><button id="eResolve" type="button" style="width:100%">Read location from link</button></div>
     </div>
+    <button id="ePick" type="button" style="margin-top:6px">Pick on map</button>
     <p id="eMapsMsg" class="hint"></p>
 
     <b style="display:block;margin-top:10px">Images</b>
@@ -327,6 +356,34 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   </div>
 </dialog>
 
+<!-- ================= MAP PICKER ================= -->
+<dialog id="dlgPick" style="width:min(900px,96vw)">
+  <div class="dhead"><h2>Pick the exact spot</h2><button id="pkClose">Close</button></div>
+  <div class="dbody">
+    <p class="hint">Tap the map to drop the pin, or drag the pin. Zoom in to the shop front for the best result. The road is worked out from the pin.</p>
+    <div id="pickMap" style="height:60vh;min-height:320px;border-radius:10px;border:1px solid var(--line)"></div>
+    <p class="hint" id="pkInfo"></p>
+  </div>
+  <div class="dfoot"><button id="pkCancel">Cancel</button><button id="pkUse" class="primary" disabled>Use this spot</button></div>
+</dialog>
+
+<!-- ================= PHOTO EDITOR ================= -->
+<dialog id="dlgEditor" style="width:min(1000px,96vw)">
+  <div class="dhead"><h2>Edit photo</h2><button id="edClose">Close</button></div>
+  <div class="dbody">
+    <div class="bar">
+      <button data-tool="blur" class="primary">Blur (faces, plates)</button>
+      <button data-tool="box">Box</button>
+      <button data-tool="text">Label</button>
+      <button id="edUndo">Undo</button>
+      <button id="edReset">Reset</button>
+    </div>
+    <p class="hint" id="edHint">Drag over a face or number plate to blur it. Blurring is strong and cannot be undone after you apply it.</p>
+    <canvas id="edCanvas"></canvas>
+  </div>
+  <div class="dfoot"><button id="edCancel">Cancel</button><button id="edApply" class="primary">Apply</button></div>
+</dialog>
+
 <!-- ================= BULK DIALOG ================= -->
 <dialog id="dlgBulk">
   <div class="dhead"><h2>Bulk add names</h2><button id="bClose">Close</button></div>
@@ -349,7 +406,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 /* ============================================================
    Labels (English and Marathi)
    ============================================================ */
-const ROADS = ['Prabhat Road', 'Bhandarkar Road', 'Other'];
+const ROADS = ['Prabhat Road', 'Bhandarkar Road'];
+const REV = {pending: 'Pending review', approved: 'Approved', rejected: 'Rejected'};
 const ROAD_MR = {'Prabhat Road':'प्रभात रस्ता','Bhandarkar Road':'भांडारकर रस्ता','Other':'इतर','':'-'};
 const CATS = {
   side_margin :{en:'Side margin',             mr:'बाजूची मोकळी जागा (साईड मार्जिन)'},
@@ -458,6 +516,8 @@ function updateSyncLabel() {
   $('#sync').textContent = remote() ? (ss.token ? 'Signed in as ' + ss.name + (ss.role === 'admin' ? ' (admin)' : '') : 'Not signed in') : 'Practice mode (this browser only)';
   $('#btnOut').style.display = remote() && ss.token ? '' : 'none';
   $('#navMembers').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
+  $('#navAudit').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
+  $('#navReview').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
 }
 
 /* ============================================================
@@ -465,6 +525,10 @@ function updateSyncLabel() {
    ============================================================ */
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySAuc7Z3HsrOYa93fclV6Bz14oe2mdg_bGzPxmUQzWsOC-nST5vfAcG20gMYFbfsSR/exec';
 const scriptUrl = () => getS().scriptUrl || SCRIPT_URL;
+const isAdmin = () => !remote() || sess().role === 'admin';
+const revOf = i => (i && i.review) || 'pending';
+const imgOk = i => !remote() || revOf(i) === 'approved';
+const okImgs = p => (p.images || []).filter(imgOk);
 function sess() { try { return JSON.parse(localStorage.getItem('enc_sess') || 'null') || {}; } catch (e) { return {}; } }
 function setSess(o) { if (o) localStorage.setItem('enc_sess', JSON.stringify(o)); else localStorage.removeItem('enc_sess'); }
 const me = () => (remote() ? sess().name : '') || getS().me || '';
@@ -515,7 +579,7 @@ async function loadData() {
   catch (e) { toast('Could not load: ' + e.message, 5000); updateSyncLabel(); }
   renderAll();
 }
-function renderAll() { renderList(); renderMap(); renderLetterSel(); renderLetter(); }
+function renderAll() { renderList(); renderMap(); renderLetterSel(); renderLetter(); renderReview(); }
 
 function fillSelect(el, items, firstLabel) {
   el.innerHTML = (firstLabel ? `<option value="">${esc(firstLabel)}</option>` : '') + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
@@ -581,7 +645,7 @@ window.openViewById = id => { const p = state.props.find(x => x.id === id); if (
 function openView(p) {
   state.viewing = p;
   $('#vTitle').textContent = p.name + (p.name_mr ? ' / ' + p.name_mr : '');
-  const imgs = (p.images || []).map(i => `<figure><a href="${esc(i.url)}" target="_blank"><img src="${esc(i.url)}" alt=""></a><figcaption>${esc(i.source || '')}, ${esc(i.date || 'date missing')}${i.caption ? '<br>' + esc(i.caption) : ''}</figcaption></figure>`).join('');
+  const imgs = (p.images || []).map((i, k) => `<figure data-i="${k}"><a href="${esc(i.url)}" target="_blank"><img src="${esc(i.url)}" alt=""></a><figcaption>${esc(i.source || '')}, ${esc(i.date || 'date missing')}${i.caption ? '<br>' + esc(i.caption) : ''}${remote() ? `<br><span class="revchip ${revOf(i)}">${REV[revOf(i)]}</span>` : ''}${isAdmin() ? `<br><button data-ia="approved">Approve</button><button data-ia="rejected">Reject</button><button data-ia="edit">Edit / blur</button>` : ''}</figcaption></figure>`).join('');
   const hist = (p.history || []).slice().reverse().map(h => `<li>${esc(h)}</li>`).join('');
   $('#vBody').innerHTML = `
     <div class="kv">
@@ -597,7 +661,7 @@ function openView(p) {
     <div class="gallery">${imgs || '<span class="hint">No images yet.</span>'}</div>
     ${hist ? `<b>History</b><ul class="hint">${hist}</ul>` : ''}`;
   $('#vMaps').style.display = mapsUrlFor(p) ? '' : 'none';
-  $('#dlgView').showModal();
+  if (!$('#dlgView').open) $('#dlgView').showModal();
 }
 $('#vClose').onclick = () => $('#dlgView').close();
 $('#vEdit').onclick = () => { $('#dlgView').close(); openEdit(state.viewing); };
@@ -619,7 +683,7 @@ function openEdit(p) {
   $('#eMapsMsg').textContent = '';
   state.pending = (e.images || []).map(i => Object.assign({existing:true, key:uid()}, i));
   renderImgRows();
-  $('#eDelete').style.display = p ? '' : 'none';
+  $('#eDelete').style.display = p && (!remote() || sess().role === 'admin') ? '' : 'none';
   $('#dlgEdit').showModal();
 }
 function renderImgRows() {
@@ -661,23 +725,34 @@ $('#dlgEdit').addEventListener('paste', async e => {
   if (!items.length) return; e.preventDefault(); for (const it of items) await addImageBlob(it.getAsFile());
 });
 
+async function detectEditRoad() {
+  const lat = parseFloat($('#eLat').value), lng = parseFloat($('#eLng').value);
+  if (!remote() || isNaN(lat) || isNaN(lng)) return;
+  try {
+    const g = (await call('geocode', {lat, lng})).place;
+    if (g && g.road) { $('#eRoad').value = g.road; $('#eMapsMsg').textContent += ' Road set to ' + g.road + '.'; }
+    else $('#eMapsMsg').textContent += ' Could not tell the road from this spot. Please choose it.';
+  } catch (e) {}
+}
 async function applyMapsInput() {
   const v = $('#eMaps').value.trim(); if (!v) return;
   const c = parseCoords(v);
-  if (c) { $('#eLat').value = c.lat; $('#eLng').value = c.lng; $('#eMapsMsg').textContent = 'Location read from the link.'; if (!/^https?:/i.test(v)) $('#eMaps').value = `https://www.google.com/maps?q=${c.lat},${c.lng}`; return; }
+  if (c) { $('#eLat').value = c.lat; $('#eLng').value = c.lng; $('#eMapsMsg').textContent = 'Location read from the link.'; if (!/^https?:/i.test(v)) $('#eMaps').value = `https://www.google.com/maps?q=${c.lat},${c.lng}`; detectEditRoad(); return; }
   if (isShortMapsLink(v)) {
     if (!remote()) { $('#eMapsMsg').textContent = 'Short links need the shared sheet connected. Open the link, copy the full address from the browser, or type latitude and longitude.'; return; }
     $('#eMapsMsg').textContent = 'Resolving short link...';
-    try { const r = await call('resolve', {url: v}); if (r.lat != null) { $('#eLat').value = r.lat; $('#eLng').value = r.lng; $('#eMapsMsg').textContent = 'Location read from the short link.'; } else $('#eMapsMsg').textContent = 'The link has no coordinates. In Google Maps, right-click the spot and copy the numbers.'; }
+    try { const r = await call('resolve', {url: v}); if (r.lat != null) { $('#eLat').value = r.lat; $('#eLng').value = r.lng; $('#eMapsMsg').textContent = 'Location read from the short link.'; detectEditRoad(); } else $('#eMapsMsg').textContent = 'The link has no coordinates. In Google Maps, right-click the spot and copy the numbers.'; }
     catch (e) { $('#eMapsMsg').textContent = 'Could not resolve: ' + e.message; }
   } else $('#eMapsMsg').textContent = 'No coordinates found in this link. Right-click the spot in Google Maps and paste the numbers here.';
 }
 $('#eMaps').addEventListener('change', applyMapsInput);
+$('#eLat').addEventListener('change', detectEditRoad); $('#eLng').addEventListener('change', detectEditRoad);
 $('#eResolve').onclick = applyMapsInput;
 
 async function saveEdit() {
   const e = state.editing, name = $('#eName').value.trim();
   if (!name) return toast('Name is required.');
+  if (!$('#eRoad').value) return toast('Choose Prabhat Road or Bhandarkar Road.');
   if (state.pending.some(i => !i.date)) return toast('Every image needs a date (see the Street View footer).', 4500);
   const btn = $('#eSave'); btn.disabled = true; btn.textContent = 'Saving...';
   try {
@@ -685,7 +760,7 @@ async function saveEdit() {
     for (const im of state.pending) {
       let url = im.url;
       if (!im.existing) url = await API.upload(im.dataUrl, (name.replace(/\W+/g, '-') + '-' + Date.now() + '.jpg'));
-      images.push({url, date: im.date, source: im.source || 'Other', caption: im.caption || ''});
+      images.push({url, date: im.date, source: im.source || 'Other', caption: im.caption || '', review: im.review, reviewed_by: im.reviewed_by, reviewed_at: im.reviewed_at});
     }
     const lat = parseFloat($('#eLat').value), lng = parseFloat($('#eLng').value);
     const next = Object.assign({}, e, {
@@ -712,7 +787,7 @@ async function saveEdit() {
 $('#eSave').onclick = saveEdit;
 $('#eCancel').onclick = $('#eClose').onclick = () => $('#dlgEdit').close();
 $('#eDelete').onclick = async () => {
-  if (!confirm('Delete this property permanently? (Images stay in the Drive folder.)')) return;
+  if (!confirm('Delete "' + (state.editing.name || 'this property') + '"?' + (remote() ? ' A full copy is kept in the audit log.' : '') + ' Images stay in the Drive folder.')) return;
   try { await API.del(state.editing.id); state.props = state.props.filter(x => x.id !== state.editing.id); $('#dlgEdit').close(); renderAll(); toast('Deleted.'); }
   catch (e) { toast('Delete failed: ' + e.message); }
 };
@@ -776,6 +851,7 @@ async function addPhotoFile(file) {
     it.dataUrl = await resizeImage(file, 1600);
     if (it.exif.lat != null) { it.lat = it.exif.lat; it.lng = it.exif.lng; it.locText = it.lat + ', ' + it.lng; it.source = 'Own photo'; }
     if (it.exif.date) it.date = it.exif.date;
+    else { const m = (file.name || '').match(/(?:^|[^0-9])(20\d{2})(0[1-9]|1[0-2])([0-3]\d)(?:[^0-9]|$)/); if (m) { it.date = m[1] + '-' + m[2] + '-' + m[3]; it.dateNote = 'Date taken from the file name'; } }
   } catch (e) { it.status = 'error'; it.error = e.message; renderPhotos(); return; }
   await analyzeItem(it);
 }
@@ -790,25 +866,27 @@ async function analyzeItem(it) {
     it.place = r.place || null;
     if (r.image_date && !it.date) it.date = r.image_date;
     if (r.source && SRC[r.source] && it.exif.lat == null) it.source = r.source;
-    const road = (it.place && it.place.road) || roadFrom(r.road_text);
+    const gpsRoad = it.place && it.place.road;
+    const road = gpsRoad || roadFrom(r.road_guess) || roadFrom(r.road_text);
+    const roadSrc = gpsRoad ? 'gps' : (road ? 'ai' : '');
     it.entries = (r.entries || []).map(e => ({
       name: e.name || '', name_mr: e.name_mr || '', category: CATS[e.category] ? e.category : 'front_margin',
       desc_en: e.observation_en || '', desc_mr: e.observation_mr || '', seen: e.encroachment_seen !== false, conf: e.confidence || '',
-      include: e.encroachment_seen !== false, road
+      include: e.encroachment_seen !== false, road, roadSrc
     }));
-    if (!it.entries.length) { it.entries = [blankEntry(road)]; it.entries[0].include = false; it.note = 'No business was detected in this photo. You can add one by hand.'; }
+    if (!it.entries.length) { it.entries = [blankEntry(road, roadSrc)]; it.entries[0].include = false; it.note = 'No business was detected in this photo. You can add one by hand.'; }
     it.note = it.note || (r.notes || '');
     it.status = 'done';
   } catch (e) { it.status = 'error'; it.error = e.message; }
   renderPhotos();
 }
-const blankEntry = road => ({name:'', name_mr:'', category:'front_margin', desc_en:'', desc_mr:'', seen:true, conf:'', include:true, road: road || ''});
+const blankEntry = (road, src) => ({name:'', name_mr:'', category:'front_margin', desc_en:'', desc_mr:'', seen:true, conf:'', include:true, road: road || '', roadSrc: road ? (src || 'ai') : ''});
 
 function renderPhotos() {
   const items = photo.items;
   $('#pList').innerHTML = items.map(it => `
     <div class="pcard" data-id="${it.id}">
-      ${it.dataUrl ? `<img src="${it.dataUrl}" alt="">` : '<div></div>'}
+      ${it.dataUrl ? `<div><img src="${it.dataUrl}" alt=""><button type="button" data-p="edit" style="margin-top:6px;width:100%">Edit / blur</button></div>` : '<div></div>'}
       <div>
         <div class="g3">
           <div><label>Location (GPS from photo, Maps link, or "lat, lng")</label><input data-p="locText" value="${esc(it.locText)}" placeholder="paste a Google Maps link"></div>
@@ -818,10 +896,15 @@ function renderPhotos() {
         <div style="margin:6px 0">
           ${it.exif.lat != null ? '<span class="chip ok">GPS read from photo</span>' : (it.lat != null ? '<span class="chip ok">Location set</span>' : '<span class="chip warn">No location yet</span>')}
           ${it.place ? `<span class="chip">${esc(it.place.address || '')}</span>` : ''}
+          ${it.place && it.place.road ? `<span class="chip ok">Road: ${esc(it.place.road)} (from location)</span>` : ''}
+          ${it.dateNote ? `<span class="chip">${esc(it.dateNote)}</span>` : ''}
+          ${it.edited ? '<span class="chip ok">Edited</span>' : ''}
+          <button type="button" data-p="here">Use my current location</button>
           ${it.status === 'reading' || it.status === 'analyzing' ? '<span class="chip">' + (it.status === 'reading' ? 'Reading photo...' : 'AI is analysing...') + '</span>' : ''}
           <button type="button" data-p="rm" class="danger" style="float:right">Remove photo</button>
           ${it.status === 'error' ? `<div class="hint" style="color:#b42318">${esc(it.error)} <button type="button" data-p="retry">Try again</button></div>` : ''}
           ${it.note ? `<div class="hint">${esc(it.note)}</div>` : ''}
+          ${it.status === 'done' && it.exif.lat == null && it.lat == null ? '<div class="hint">No GPS found in this file. If your camera has location tags on, the photo picker probably removed it. On Android choose the photo through Browse or Files instead of the Photos picker, or paste a Maps link.</div>' : ''}
         </div>
         ${it.status === 'done' || it.status === 'error' ? it.entries.map((e, i) => `
           <div class="pent ${e.include ? '' : 'off'}" data-i="${i}">
@@ -831,7 +914,7 @@ function renderPhotos() {
               ${state.props.some(p => normName(p.name) && normName(p.name) === normName(e.name)) ? '<span class="chip ok">Will be added to the existing record</span>' : ''}</label>
             <div class="g3">
               <div><label>Name *</label><input data-e="name" value="${esc(e.name)}"></div>
-              <div><label>Road</label><select data-e="road">${[['', 'Not set']].concat(ROADS.map(r => [r, r])).map(([v, t]) => `<option value="${esc(v)}" ${e.road === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+              <div><label>Road</label><select data-e="road" ${e.road ? '' : 'style="border-color:#b42318"'}>${[['', 'Choose road...']].concat(ROADS.map(r => [r, r])).map(([v, t]) => `<option value="${esc(v)}" ${e.road === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
               <div><label>Category</label><select data-e="category">${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${e.category === k ? 'selected' : ''}>${esc(v.en)}</option>`).join('')}</select></div>
             </div>
             <div class="g2">
@@ -845,10 +928,17 @@ function renderPhotos() {
   $('#pSummary').textContent = items.length ? `${items.length} photo(s), ${n} entr${n === 1 ? 'y' : 'ies'} ready. Check each one before saving.` : '';
   $('#pSave').disabled = !n;
 }
+async function geocodePhoto(it) {
+  if (!remote()) return;
+  try {
+    const g = (await call('geocode', {lat: it.lat, lng: it.lng})).place; it.place = g;
+    if (g && g.road) it.entries.forEach(en => { if (en.roadSrc !== 'user') { en.road = g.road; en.roadSrc = 'gps'; } });
+  } catch (err) {}
+}
 const photoOf = el => photo.items.find(x => x.id === el.closest('.pcard').dataset.id);
 $('#pList').addEventListener('input', async e => {
   const t = e.target, it = photoOf(t); if (!it) return;
-  if (t.dataset.e) { const en = it.entries[+t.closest('.pent').dataset.i]; en[t.dataset.e] = t.type === 'checkbox' ? t.checked : t.value; if (t.dataset.e === 'include') renderPhotos(); return; }
+  if (t.dataset.e) { const en = it.entries[+t.closest('.pent').dataset.i]; en[t.dataset.e] = t.type === 'checkbox' ? t.checked : t.value; if (t.dataset.e === 'road') { en.roadSrc = 'user'; renderPhotos(); } if (t.dataset.e === 'include') renderPhotos(); return; }
   if (t.dataset.p === 'date') it.date = t.value;
   if (t.dataset.p === 'source') it.source = t.value;
 });
@@ -856,7 +946,7 @@ $('#pList').addEventListener('change', async e => {
   const t = e.target, it = photoOf(t); if (!it || t.dataset.p !== 'locText') return;
   it.locText = t.value.trim(); let c = parseCoords(it.locText);
   if (!c && isShortMapsLink(it.locText) && remote()) { try { const r = await call('resolve', {url: it.locText}); if (r.lat != null) c = {lat: r.lat, lng: r.lng}; } catch (err) { toast(err.message); } }
-  if (c) { it.lat = c.lat; it.lng = c.lng; if (remote()) { try { const g = (await call('geocode', {lat: c.lat, lng: c.lng})).place; it.place = g; if (g && g.road) it.entries.forEach(en => { if (!en.road) en.road = g.road; }); } catch (err) {} } }
+  if (c) { it.lat = c.lat; it.lng = c.lng; await geocodePhoto(it); }
   else toast('No coordinates found in that link. Use a full Google Maps link or paste "lat, lng".');
   renderPhotos();
 });
@@ -864,7 +954,16 @@ $('#pList').addEventListener('click', e => {
   const t = e.target; if (!t.dataset.p) return; const it = photoOf(t);
   if (t.dataset.p === 'rm') { photo.items = photo.items.filter(x => x !== it); renderPhotos(); }
   if (t.dataset.p === 'retry') analyzeItem(it);
-  if (t.dataset.p === 'addEntry') { it.entries.push(blankEntry((it.place && it.place.road) || '')); renderPhotos(); }
+  if (t.dataset.p === 'edit') openEditor(it.dataUrl, url => { it.dataUrl = url; it.edited = true; renderPhotos(); });
+  if (t.dataset.p === 'addEntry') { it.entries.push(blankEntry((it.place && it.place.road) || (it.entries[0] && it.entries[0].road) || '')); renderPhotos(); }
+  if (t.dataset.p === 'here') {
+    if (!navigator.geolocation) return toast('This browser cannot give your location.');
+    toast('Getting your location...');
+    navigator.geolocation.getCurrentPosition(async pos => {
+      it.lat = +pos.coords.latitude.toFixed(6); it.lng = +pos.coords.longitude.toFixed(6); it.locText = it.lat + ', ' + it.lng;
+      await geocodePhoto(it); renderPhotos(); toast('Location set. Use this only if you are standing at the spot.', 5000);
+    }, () => toast('Could not get your location. Allow location access, or paste a Maps link.', 5000), {enableHighAccuracy: true, timeout: 15000});
+  }
 });
 $('#pAdd').onclick = () => $('#pFile').click();
 $('#pFile').onchange = async e => { for (const f of [...e.target.files]) await addPhotoFile(f); e.target.value = ''; };
@@ -879,7 +978,7 @@ $('#pSave').onclick = async () => {
   const todo = photo.items.filter(it => it.entries.some(e => e.include));
   for (const it of todo) {
     if (!it.date) return toast('Every photo needs a date (see the Street View footer).', 4500);
-    for (const e of it.entries.filter(x => x.include)) if (!e.name.trim()) return toast('Every entry needs a name. Untick entries you do not want.', 4500);
+    for (const e of it.entries.filter(x => x.include)) { if (!e.name.trim()) return toast('Every entry needs a name. Untick entries you do not want.', 4500); if (!e.road) return toast('Choose the road (Prabhat Road or Bhandarkar Road) for every entry.', 4500); }
   }
   const btn = $('#pSave'); btn.disabled = true; btn.textContent = 'Saving...';
   let made = 0, merged = 0;
@@ -888,7 +987,7 @@ $('#pSave').onclick = async () => {
       const url = await API.upload(it.dataUrl, 'photo-' + Date.now() + '-' + uid() + '.jpg');
       for (const e of it.entries.filter(x => x.include)) {
         const name = e.name.trim(), day = todayISO(), who = me() || 'someone';
-        const image = {url, date: it.date, source: it.source, caption: name + ' (' + CATS[e.category].en + ')'};
+        const image = {url, date: it.date, source: it.source, caption: name + ' (' + CATS[e.category].en + ')', review: 'pending'};
         const ex = state.props.find(p => normName(p.name) === normName(name));
         let p;
         if (ex) {
@@ -918,6 +1017,7 @@ $('#bCancel').onclick = $('#bClose').onclick = () => $('#dlgBulk').close();
 $('#bSave').onclick = async () => {
   const names = $('#bNames').value.split('\n').map(s => s.trim()).filter(Boolean);
   if (!names.length) return toast('Add at least one name.');
+  if (!$('#bRoad').value) return toast('Choose Prabhat Road or Bhandarkar Road.');
   const btn = $('#bSave'); btn.disabled = true;
   try {
     for (const name of names) {
@@ -947,7 +1047,8 @@ function issues(p) {
   if (!p.road) out.push('road not set');
   if (!p.desc_en) out.push('no observation text');
   if (!(p.images || []).length) out.push('no image');
-  else if ((p.images || []).some(i => !i.date)) out.push('image date missing');
+  else if (!okImgs(p).length) out.push('no approved photo yet, left out of letters');
+  else if (okImgs(p).some(i => !i.date)) out.push('image date missing');
   if (p.lat == null) out.push('no location');
   if ((p.verification || 'pending') === 'pending') out.push('plan not verified');
   return out;
@@ -1055,7 +1156,7 @@ function letterMR(c) {
 function annexHTML(c) {
   return c.props.map((p, i) => {
     const maps = mapsUrlFor(p);
-    const figs = (p.images || []).map(im => {
+    const figs = okImgs(p).map(im => {
       const src = im.source || 'Other', s = SRC[src] || SRC.Other;
       const credit = /google/i.test(src) ? ' © Google. Shown only to identify the location. / © गुगल. केवळ ठिकाण ओळखण्यासाठी.' : '';
       return `<figure><img src="${esc(im.url)}" alt=""><figcaption>${esc(s.en)} / ${esc(s.mr)}, ${esc(fmtDateEN(im.date) || 'date missing')} / ${esc(fmtDateMR(im.date))}${im.caption ? '. ' + esc(im.caption) : ''}.${credit}</figcaption></figure>`;
@@ -1067,7 +1168,7 @@ function annexHTML(c) {
   }).join('');
 }
 function currentLetterContext() {
-  const props = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted');
+  const props = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted' && okImgs(p).length);
   return {props, s: getS(), type: $('#lType').value, lang: $('#lLang').value, date: $('#lDate').value || todayISO(), ref: $('#lRef').value.trim(), annex: $('#lAnnex').checked};
 }
 function buildLetterHTML(c) {
@@ -1079,10 +1180,11 @@ function buildLetterHTML(c) {
 }
 function renderLetter() {
   const c = currentLetterContext(), box = $('#letterPreview'), warn = $('#lWarn');
-  if (!c.props.length) { box.innerHTML = '<p class="hint">Select one or more properties on the left to preview the letter.</p>'; warn.innerHTML = ''; return; }
+  const noEvidence = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted' && !okImgs(p).length).length;
+  if (!c.props.length) { box.innerHTML = '<p class="hint">' + (noEvidence ? noEvidence + ' selected property(ies) have no approved photo yet, so nothing can go into a letter. Approve photos in the Review tab.' : 'Select one or more properties on the left to preview the letter.') + '</p>'; warn.innerHTML = ''; return; }
   const missing = [];
+  if (noEvidence) missing.push(noEvidence + ' selected property(ies) left out because no photo is approved yet');
   if (!c.s.cName) missing.push('your name and address (Settings)');
-  const noImg = c.props.filter(p => !(p.images || []).length).length; if (noImg) missing.push(noImg + ' selected property(ies) without images');
   const unv = c.props.filter(p => (p.verification || 'pending') === 'pending').length; if (unv) missing.push(unv + ' not yet verified against the sanctioned plan');
   warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. The letter asks PMC to verify, so unverified items are fine, but check your facts.</div>` : '';
   box.innerHTML = buildLetterHTML(c);
@@ -1100,6 +1202,174 @@ $('#lDoc').onclick = async () => {
   download('PMC-letter-' + todayISO() + '.doc', '﻿' + html, 'application/msword');
 };
 
+/* Map picker for an entry's location */
+let pickMap = null, pickPin = null;
+function openPicker() {
+  if (!window.L) return toast('The map did not load. Check your internet connection.');
+  const lat = parseFloat($('#eLat').value), lng = parseFloat($('#eLng').value), has = !isNaN(lat) && !isNaN(lng);
+  $('#dlgPick').showModal();
+  setTimeout(() => {
+    if (!pickMap) {
+      pickMap = L.map('pickMap');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'}).addTo(pickMap);
+      pickMap.on('click', e => setPin(e.latlng));
+    }
+    pickMap.invalidateSize();
+    if (pickPin) { pickMap.removeLayer(pickPin); pickPin = null; }
+    $('#pkUse').disabled = true; $('#pkInfo').textContent = '';
+    pickMap.setView(has ? [lat, lng] : [18.5175, 73.8385], has ? 19 : 16);
+    if (has) setPin({lat, lng});
+  }, 80);
+}
+function setPin(ll) {
+  if (!pickPin) { pickPin = L.marker(ll, {draggable: true}).addTo(pickMap); pickPin.on('dragend', () => setPin(pickPin.getLatLng())); }
+  else pickPin.setLatLng(ll);
+  const p = pickPin.getLatLng(); $('#pkUse').disabled = false; $('#pkInfo').textContent = p.lat.toFixed(6) + ', ' + p.lng.toFixed(6);
+}
+function bindPicker() {
+  $('#ePick').onclick = openPicker;
+  $('#pkCancel').onclick = $('#pkClose').onclick = () => $('#dlgPick').close();
+  $('#pkUse').onclick = () => {
+    const p = pickPin.getLatLng(), la = +p.lat.toFixed(6), ln = +p.lng.toFixed(6);
+    $('#eLat').value = la; $('#eLng').value = ln; $('#eMaps').value = `https://www.google.com/maps?q=${la},${ln}`;
+    $('#eMapsMsg').textContent = 'Location set from the map pin.'; $('#dlgPick').close(); detectEditRoad();
+  };
+}
+
+/* ============================================================
+   Photo editor (blur, box, label)
+   ============================================================ */
+const ed = {img: null, ops: [], tool: 'blur', cb: null, start: null, w: 0, h: 0};
+function openEditor(src, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const sc = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    ed.img = img; ed.w = Math.round(img.naturalWidth * sc); ed.h = Math.round(img.naturalHeight * sc); ed.ops = []; ed.cb = cb; ed.start = null;
+    const c = $('#edCanvas'); c.width = ed.w; c.height = ed.h;
+    edTool('blur'); edDraw(); $('#dlgEditor').showModal();
+  };
+  img.onerror = () => toast('Could not open this photo for editing.');
+  img.src = src;
+}
+function edTool(t) {
+  ed.tool = t;
+  $$('#dlgEditor [data-tool]').forEach(b => b.classList.toggle('primary', b.dataset.tool === t));
+  $('#edHint').textContent = t === 'blur' ? 'Drag over a face or number plate to blur it. Blurring is strong and cannot be undone after you apply it.' : t === 'box' ? 'Drag to draw a red box around something you want to point out.' : 'Tap where you want a short label.';
+}
+function edApplyOp(x, op) {
+  if (op.type === 'blur') {
+    if (op.w < 4 || op.h < 4) return;
+    const blk = Math.max(12, Math.round(Math.min(op.w, op.h) / 5));
+    const sw = Math.max(1, Math.round(op.w / blk)), sh = Math.max(1, Math.round(op.h / blk));
+    const t = document.createElement('canvas'); t.width = sw; t.height = sh;
+    t.getContext('2d').drawImage(x.canvas, op.x, op.y, op.w, op.h, 0, 0, sw, sh);
+    x.imageSmoothingEnabled = false; x.drawImage(t, 0, 0, sw, sh, op.x, op.y, op.w, op.h); x.imageSmoothingEnabled = true;
+  } else if (op.type === 'box') {
+    x.strokeStyle = '#e11d48'; x.lineWidth = Math.max(3, ed.w / 300); x.strokeRect(op.x, op.y, op.w, op.h);
+  } else if (op.type === 'text') {
+    const fs = Math.max(18, Math.round(ed.w / 45)); x.font = 'bold ' + fs + 'px Inter, Arial, sans-serif';
+    const w = x.measureText(op.text).width + 12; x.fillStyle = '#e11d48'; x.fillRect(op.x, op.y, w, fs + 10);
+    x.fillStyle = '#fff'; x.textBaseline = 'top'; x.fillText(op.text, op.x + 6, op.y + 5);
+  }
+}
+function edDraw(preview) {
+  const c = $('#edCanvas'), x = c.getContext('2d');
+  x.drawImage(ed.img, 0, 0, ed.w, ed.h);
+  ed.ops.concat(preview ? [preview] : []).forEach(op => edApplyOp(x, op));
+}
+function edPos(e) { const c = $('#edCanvas'), r = c.getBoundingClientRect(); return {x: (e.clientX - r.left) * c.width / r.width, y: (e.clientY - r.top) * c.height / r.height}; }
+function edRect(a, b) { return {x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y)}; }
+function bindEditor() {
+  const c = $('#edCanvas');
+  c.addEventListener('pointerdown', e => { c.setPointerCapture(e.pointerId); ed.start = edPos(e); });
+  c.addEventListener('pointermove', e => { if (!ed.start || ed.tool === 'text') return; edDraw(Object.assign({type: ed.tool}, edRect(ed.start, edPos(e)))); });
+  c.addEventListener('pointerup', e => {
+    if (!ed.start) return; const end = edPos(e), st = ed.start; ed.start = null;
+    if (ed.tool === 'text') { const t = prompt('Label text:'); if (t && t.trim()) ed.ops.push({type: 'text', x: st.x, y: st.y, text: t.trim().slice(0, 60)}); }
+    else { const r = edRect(st, end); if (r.w > 6 && r.h > 6) ed.ops.push(Object.assign({type: ed.tool}, r)); }
+    edDraw();
+  });
+  $$('#dlgEditor [data-tool]').forEach(b => b.onclick = () => edTool(b.dataset.tool));
+  $('#edUndo').onclick = () => { ed.ops.pop(); edDraw(); };
+  $('#edReset').onclick = () => { ed.ops = []; edDraw(); };
+  $('#edCancel').onclick = $('#edClose').onclick = () => $('#dlgEditor').close();
+  $('#edApply').onclick = () => { const url = c.toDataURL('image/jpeg', 0.86), cb = ed.cb; $('#dlgEditor').close(); if (cb) cb(url); };
+}
+
+/* ============================================================
+   Photo review (admin) and saved-photo actions
+   ============================================================ */
+const clone = o => JSON.parse(JSON.stringify(o));
+function updateProp(saved) {
+  const i = state.props.findIndex(x => x.id === saved.id); if (i < 0) state.props.push(saved); else state.props[i] = saved;
+  renderAll();
+  if ($('#dlgView').open && state.viewing && state.viewing.id === saved.id) openView(saved);
+}
+async function imageSource(url) {
+  if (/^data:/.test(url)) return url;
+  const id = (url.match(/[?&]id=([\w-]+)/) || [])[1]; if (!id) throw new Error('This image cannot be edited here.');
+  const r = await call('image_fetch', {id}); return 'data:' + r.mime + ';base64,' + r.data;
+}
+async function editSavedImage(p, idx) {
+  const im = p.images[idx];
+  try {
+    const src = await imageSource(im.url);
+    openEditor(src, async url => {
+      try {
+        const m = url.match(/^data:(.+?);base64,(.+)$/);
+        if (remote()) updateProp((await call('image_replace', {property_id: p.id, url: im.url, mime: m[1], data: m[2]})).property);
+        else { const np = clone(p); np.images[idx].url = url; updateProp(await API.save(np)); }
+        toast('Photo updated. It needs approval again.', 5000);
+      } catch (err) { toast('Could not save the edited photo: ' + err.message, 6000); }
+    });
+  } catch (err) { toast(err.message, 5000); }
+}
+async function setReview(p, idx, review, extra) {
+  const np = clone(p); Object.assign(np, extra || {}); np.images[idx].review = review;
+  updateProp(await API.save(np));
+}
+function renderReview() {
+  const box = $('#rvList'); if (!box) return;
+  const items = [];
+  state.props.forEach(p => (p.images || []).forEach((im, i) => { if (revOf(im) === 'pending') items.push({p, im, i}); }));
+  const n = items.length;
+  $('#rvBadge').textContent = n; $('#rvBadge').style.display = n && remote() ? '' : 'none';
+  box.innerHTML = items.map(({p, im, i}) => `
+    <div class="rvcard" data-p="${esc(p.id)}" data-i="${i}">
+      <div><a href="${esc(im.url)}" target="_blank"><img src="${esc(im.url)}" alt=""></a><div class="hint">${esc(im.source || '')}, ${esc(im.date || 'date missing')}</div></div>
+      <div>
+        <b>${esc(p.name)}</b> <span class="hint">(${esc(p.road || 'no road')}, ${esc((CATS[p.category] || CATS.other).en)})</span>
+        <label>Observed (English)</label><textarea data-f="desc_en">${esc(p.desc_en || '')}</textarea>
+        <label>काय आढळले (मराठी)</label><textarea data-f="desc_mr">${esc(p.desc_mr || '')}</textarea>
+        <div class="row-actions" style="margin-top:8px">
+          <button class="primary" data-rv="approved">Approve</button><button class="danger" data-rv="rejected">Reject</button>
+          <button data-rv="edit">Edit / blur photo</button><button data-rv="text">Save text only</button><button data-rv="open">Open entry</button>
+        </div>
+      </div>
+    </div>`).join('') || '<p class="hint">Nothing is waiting for review.</p>';
+}
+function bindReview() {
+  $('#rvList').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-rv]'); if (!b) return;
+    const card = b.closest('.rvcard'), p = state.props.find(x => x.id === card.dataset.p), idx = +card.dataset.i; if (!p) return;
+    const text = {desc_en: card.querySelector('[data-f=desc_en]').value.trim(), desc_mr: card.querySelector('[data-f=desc_mr]').value.trim()};
+    try {
+      if (b.dataset.rv === 'open') return openView(p);
+      if (b.dataset.rv === 'edit') return editSavedImage(p, idx);
+      if (b.dataset.rv === 'text') { updateProp(await API.save(Object.assign(clone(p), text))); return toast('Text saved.'); }
+      await setReview(p, idx, b.dataset.rv, text); toast(b.dataset.rv === 'approved' ? 'Approved.' : 'Rejected.');
+    } catch (err) { toast(err.message, 5000); }
+  });
+  $('#vBody').addEventListener('click', async e => {
+    const b = e.target.closest('button[data-ia]'); if (!b || !state.viewing) return;
+    const idx = +b.closest('figure').dataset.i, p = state.viewing;
+    try {
+      if (b.dataset.ia === 'edit') return editSavedImage(p, idx);
+      await setReview(p, idx, b.dataset.ia);
+    } catch (err) { toast(err.message, 5000); }
+  });
+}
+
 /* ============================================================
    Login (email OTP) and member approval
    ============================================================ */
@@ -1114,10 +1384,19 @@ function hideGate() { $('#authGate').classList.add('off'); }
 async function agRun(btn, fn) {
   btn.disabled = true; $('#agMsg').textContent = '';
   try { await fn(); } catch (e) { $('#agMsg').textContent = e.message; }
-  btn.disabled = false;
+  if (!btn.dataset.lock) btn.disabled = false;
+}
+let agTimer = null;
+function agCooldown(sec) {
+  const b = $('#agResend'); clearInterval(agTimer); let n = sec; b.dataset.lock = '1'; b.disabled = true; b.textContent = 'Send a new code (' + n + 's)';
+  agTimer = setInterval(() => {
+    n--;
+    if (n <= 0) { clearInterval(agTimer); delete b.dataset.lock; b.disabled = false; b.textContent = 'Send a new code'; }
+    else b.textContent = 'Send a new code (' + n + 's)';
+  }, 1000);
 }
 function agState(r) {
-  if (r.state === 'otp_sent') { $('#agOtpMsg').textContent = 'We sent a 6-digit code to ' + r.hint + '. It works for 10 minutes.'; $('#agCode').value = ''; showGate('Otp'); setTimeout(() => $('#agCode').focus(), 50); }
+  if (r.state === 'otp_sent') { $('#agOtpMsg').textContent = 'We sent a 6-digit code to ' + r.hint + '. It works for 10 minutes.'; $('#agCode').value = ''; showGate('Otp'); agCooldown(60); setTimeout(() => $('#agCode').focus(), 50); }
   else if (r.state === 'pending') showGate('Pend');
   else if (r.state === 'unknown') {
     const v = agId; $('#agEmail').value = v.includes('@') ? v : ''; $('#agMobile').value = v.includes('@') ? '' : v; showGate('Req');
@@ -1147,7 +1426,17 @@ function bindAuth() {
     try { await call('member_add', {name: $('#maName').value.trim(), email: $('#maEmail').value.trim(), mobile: $('#maMobile').value.trim()}); ['maName', 'maEmail', 'maMobile'].forEach(i => $('#' + i).value = ''); toast('Member added and approved.'); loadMembers(); }
     catch (e) { toast(e.message, 5000); }
   };
-  $('#maRefresh').onclick = loadMembers;
+  $('#maRefresh').onclick = loadMembers; $('#auRefresh').onclick = loadAudit;
+}
+async function loadAudit() {
+  if (sess().role !== 'admin') return;
+  try {
+    const rows = (await call('audit_list')).entries;
+    $('#auBody').innerHTML = rows.map(r => {
+      const d = r.action === 'delete' ? 'Full copy of the record saved in the Audit sheet' : (r.detail || '');
+      return `<tr><td>${esc(new Date(r.time).toLocaleString())}</td><td>${esc(r.user)}</td><td>${esc(r.action)}</td><td>${esc(r.target_name || r.target_id || '')}</td><td><small>${esc(d)}</small></td></tr>`;
+    }).join('') || '<tr><td colspan="5">Nothing logged yet.</td></tr>';
+  } catch (e) { toast('Could not load the audit trail: ' + e.message, 5000); }
 }
 async function loadMembers() {
   if (sess().role !== 'admin') return;
@@ -1182,8 +1471,8 @@ function init() {
   fillSelect($('#fStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
   fillSelect($('#lRoad'), ROADS.map(r => [r, r]), 'All roads');
   fillSelect($('#lStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
-  fillSelect($('#eRoad'), [['', 'Not set']].concat(ROADS.map(r => [r, r])));
-  fillSelect($('#bRoad'), [['', 'Not set (set later)']].concat(ROADS.map(r => [r, r])));
+  fillSelect($('#eRoad'), [['', 'Choose road']].concat(ROADS.map(r => [r, r])));
+  fillSelect($('#bRoad'), [['', 'Choose road']].concat(ROADS.map(r => [r, r])));
   fillSelect($('#eCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]));
   fillSelect($('#bCat'), Object.entries(CATS).map(([k, v]) => [k, v.en])); $('#bCat').value = 'front_margin';
   fillSelect($('#eVer'), Object.entries(VER).map(([k, v]) => [k, v.en]));
@@ -1197,8 +1486,9 @@ function init() {
     $$('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
     if (b.dataset.view === 'list' && map) setTimeout(() => map.invalidateSize(), 50);
     if (b.dataset.view === 'letter') { renderLetterSel(); renderLetter(); }
+    if (b.dataset.view === 'audit') loadAudit();
   });
-  loadSettingsUI(); bindSettings(); bindAuth(); updateSyncLabel();
+  loadSettingsUI(); bindSettings(); bindAuth(); bindEditor(); bindReview(); bindPicker(); updateSyncLabel();
   window.addEventListener('focus', () => { if (remote() && sess().token && !$('#dlgEdit').open) { loadData(); if (sess().role === 'admin') loadMembers(); } });
   if (remote() && !sess().token) { showGate('1'); return; }
   loadData();
