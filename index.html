@@ -777,9 +777,58 @@ function openView(p) {
       <div>Last update</div><div>${esc(p.updated_by || '')} ${esc((p.updated_at || '').slice(0, 10))}</div>
     </div>
     <div class="gallery">${imgs || '<span class="hint">No images yet.</span>'}</div>
+    ${portalPanel(p)}
     ${hist ? `<b>History</b><ul class="hint">${hist}</ul>` : ''}`;
+  bindPortal(p);
   $('#vMaps').style.display = mapsUrlFor(p) ? '' : 'none';
   if (!$('#dlgView').open) $('#dlgView').showModal();
+}
+/* ---- PMC complaint portal (complaint.pmc.gov.in): text to paste, then record the complaint number ---- */
+const PORTAL_URL = 'https://complaint.pmc.gov.in/login';
+function portalCat(p) {
+  const d = (p.desc_en || '').toLowerCase();
+  if (p.category === 'flex') return {cat: 'Unauthorized hoardigs banners / advertisements on roads / footpath / buildings / directions panels', sub: 'the closest option in the list'};
+  if (p.category === 'footpath' || p.category === 'road') {
+    if (/vehicle|car |cars|bike|two-wheeler|showroom/.test(d)) return {cat: 'Encroachments on public premises / roads', sub: 'Vehicles of showroom on road/footpath'};
+    if (/shed|stall|hut|workshop|cabin|kiosk|structure|cart|hawker/.test(d)) return {cat: 'Encroachments on public premises / roads', sub: 'Removal of illegal hawkers / stall / hut / workshop / garage structure on footpath/roads'};
+    return {cat: 'Encroachments on public premises / roads', sub: "Shopkeeper's material on road/footpath"};
+  }
+  return {cat: 'Encroachments on public premises / roads', sub: 'Others (Encroachment W.O.)'};
+}
+function portalText(p) {
+  const loc = p.lat != null ? ` Location: https://www.google.com/maps?q=${p.lat},${p.lng}` : '';
+  let t = `${p.name}, ${p.road || 'Pune'}, Pune. Alleged encroachment: ${(p.desc_en || '').trim()}${loc} Photo attached. Kindly inspect the spot, take action under the applicable PMC provisions, and update the status of this complaint.`;
+  return t.length > 1990 ? t.slice(0, 1987) + '...' : t;
+}
+function portalFiled(p) { return (p.history || []).some(h => /complaint filed on PMC portal/.test(h)); }
+function portalPanel(p) {
+  if (!remote()) return '';
+  const pc = portalCat(p), img = (p.images || []).find(i => revOf(i) === 'approved'), filed = portalFiled(p);
+  const addr = `${p.name}, ${p.road || ''}, Pune`.replace(/, ,/g, ',');
+  return `<div class="portal" style="border:1px solid #d6dbe6;border-radius:8px;padding:10px;margin:12px 0;background:#f8f9fc">
+    <b>PMC complaint portal</b> ${filed ? '<span class="revchip approved">filed</span>' : ''}
+    <div class="hint" style="margin:4px 0">Category: <b>${esc(pc.cat)}</b><br>Complaint type: <b>${esc(pc.sub)}</b><br>Office: choose the Shivajinagar-Ghole Road Ward Office</div>
+    <div><button data-pt="desc">Copy description</button> <button data-pt="addr">Copy address</button> <button data-pt="land">Copy landmark</button> ${img ? `<a href="${esc(img.url)}" target="_blank" download><button type="button">Open photo (attach 1)</button></a>` : '<span class="hint">No approved photo yet.</span>'}</div>
+    <div style="margin-top:6px"><button data-pt="open">Open portal</button> <button data-pt="filed">${filed ? 'Update complaint number' : 'I filed it: save the number'}</button></div>
+    <div class="hint" style="margin-top:4px">The portal takes one photo (jpg, png or pdf, up to 3 MB) and 2000 characters. Log in with your mobile OTP and paste. Saving the number here starts the ${REMIND_DAYS}-day reminder count.</div>
+    <input type="hidden" id="ptAddr" value="${esc(addr)}"></div>`;
+}
+function bindPortal(p) {
+  $$('#vBody [data-pt]').forEach(b => b.onclick = async () => {
+    const k = b.dataset.pt;
+    const copy = async (t, m) => { try { await navigator.clipboard.writeText(t); toast(m); } catch (e) { prompt('Copy this text:', t); } };
+    if (k === 'desc') return copy(portalText(p), 'Description copied. Paste it into the portal.');
+    if (k === 'addr') return copy($('#ptAddr').value, 'Address copied.');
+    if (k === 'land') return copy(`${p.name}, ${p.road || ''}`.replace(/, $/, ''), 'Landmark copied.');
+    if (k === 'open') return void window.open(PORTAL_URL, '_blank');
+    if (k === 'filed') {
+      const ref = (prompt('PMC portal complaint number (shown after you submit):', p.pmc_ref || '') || '').trim(); if (!ref) return;
+      const np = clone(p), day = todayISO(), who = me() || 'someone', again = portalFiled(p);
+      np.pmc_ref = ref; if (!np.complaint_date) np.complaint_date = day; if (np.status === 'draft') np.status = 'reported';
+      np.history = (np.history || []).concat([`${day}: ${again ? 'portal complaint number updated' : 'complaint filed on PMC portal'} (ref ${ref}, by ${who})`]);
+      try { updateProp(await API.save(np)); toast('Saved. Reminders will count from today.'); } catch (e) { toast('Could not save: ' + e.message, 6000); }
+    }
+  });
 }
 $('#vClose').onclick = () => $('#dlgView').close();
 $('#vEdit').onclick = () => { $('#dlgView').close(); openEdit(state.viewing); };
@@ -1238,7 +1287,7 @@ function senderBlock(s, lang) {
 const REMIND_DAYS = 15;
 const daysSince = iso => iso ? Math.floor((Date.now() - new Date(iso + 'T00:00:00').getTime()) / 864e5) : null;
 function followUp(p) {
-  const sent = (p.history || []).map(x => { const m = String(x).match(/^(\d{4}-\d{2}-\d{2}): (complaint|reminder) letter sent/); return m ? {d: m[1], t: m[2]} : null; }).filter(Boolean);
+  const sent = (p.history || []).map(x => { const m = String(x).match(/^(\d{4}-\d{2}-\d{2}): (complaint|reminder) (?:letter sent|filed on PMC portal)/); return m ? {d: m[1], t: m[2]} : null; }).filter(Boolean);
   const reminders = sent.filter(x => x.t === 'reminder').length;
   const first = (p.complaint_date || '').slice(0, 10) || (sent.map(x => x.d).sort()[0] || '');
   const last = sent.map(x => x.d).sort().pop() || first;
