@@ -23,6 +23,8 @@ nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
 .rvcard img{width:100%;border-radius:8px;display:block}
 .rvcard textarea{min-height:56px}
 @media(max-width:700px){.rvcard{grid-template-columns:1fr}}
+.followbox{background:#fff8e6;border:1px solid #f2d9a8;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px}
+.followbox button{padding:2px 9px;font-size:12px;margin-left:6px}
 .trbtn{padding:1px 8px;font-size:11px;margin-left:6px}
 .revchip{display:inline-block;border-radius:10px;padding:1px 7px;font-size:11px;border:1px solid var(--line)}
 .revchip.approved{background:#e6f6ee;color:var(--ok);border-color:#b7e3cd}.revchip.rejected{background:#fdecea;color:var(--bad);border-color:#f3c0bb}.revchip.pending{background:#fff4e0;color:var(--warn);border-color:#f2d9a8}
@@ -183,6 +185,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 <section id="view-letter" class="view">
   <div class="lettergrid">
     <div class="panel">
+      <div id="lFollow" class="followbox"></div>
       <b>1. Pick properties</b>
       <div class="bar" style="margin:8px 0 0">
         <input id="lQ" placeholder="Search name or text" style="flex:1;min-width:140px">
@@ -193,7 +196,9 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
           <option value="">All entries</option>
           <option value="ready" selected>Ready for a letter (approved photo)</option>
           <option value="notready">Not ready (needs photo approval)</option>
-          <option value="unreported">Not yet reported (no PMC ref)</option>
+          <option value="unreported">Not yet sent (no letter recorded)</option>
+          <option value="due">Reminder due (no action after 15+ days)</option>
+          <option value="awaiting">Letter sent, awaiting PMC action</option>
         </select>
       </div>
       <div class="bar" style="margin:6px 0 0">
@@ -219,6 +224,10 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
         <button id="lDoc">Download Word (.doc)</button>
         <button id="lCopy">Copy text</button>
       </div>
+      <div class="row-actions" style="margin-top:8px">
+        <button id="lMarkSent">Mark these as sent to PMC</button>
+      </div>
+      <p class="hint">After you send the letter, click "Mark these as sent". The app records the date, sets the entries to "Reported to PMC", and starts counting days. When PMC has not acted after 15 days, the entries show "Reminder due" and you can send the next reminder in one click.</p>
       <p class="hint">Tip: in the print window choose "Save as PDF" and untick "Headers and footers". The PDF is the most reliable output for Marathi.</p>
     </div>
     <div>
@@ -643,7 +652,7 @@ async function loadData() {
   catch (e) { toast('Could not load: ' + e.message, 5000); updateSyncLabel(); }
   renderAll();
 }
-function renderAll() { fillRoadSelects(); renderList(); renderMap(); renderLetterSel(); renderLetter(); renderReview(); }
+function renderAll() { fillRoadSelects(); renderList(); renderMap(); renderLetterSel(); renderLetter(); renderReview(); renderFollow(); }
 
 function fillSelect(el, items, firstLabel) {
   el.innerHTML = (firstLabel ? `<option value="">${esc(firstLabel)}</option>` : '') + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
@@ -666,7 +675,7 @@ function renderList() {
       ${img ? `<img class="thumb" src="${esc(img.url)}" alt="" loading="lazy">` : `<div class="thumb"></div>`}
       <div>
         <h3>${esc(p.name)}${p.name_mr ? ' <span class="hint">/ ' + esc(p.name_mr) + '</span>' : ''}</h3>
-        <div>${statusBadge(p)}${badge(p.road || 'Road not set')}${badge((CATS[p.category] || CATS.other).en)}${(p.images||[]).length ? badge((p.images.length) + ' image(s)') : badge('no image')}</div>
+        <div>${statusBadge(p)}${followChip(p)}${badge(p.road || 'Road not set')}${badge((CATS[p.category] || CATS.other).en)}${(p.images||[]).length ? badge((p.images.length) + ' image(s)') : badge('no image')}</div>
         <div class="hint">${esc(p.desc_en || '')}</div>
         <div class="row-actions">
           <button data-act="view">View</button><button data-act="edit">Edit</button>
@@ -1160,7 +1169,7 @@ function letterRows() {
   return state.props.filter(p =>
     (!road || p.road === road) && (!cat || p.category === cat) && (!st || p.status === st) &&
     (!q || [p.name, p.name_mr, p.desc_en, p.desc_mr, p.pmc_ref].join(' ').toLowerCase().includes(q)) &&
-    (!rd || (rd === 'ready' ? (p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'notready' ? !(p.verification !== 'permitted' && okImgs(p).length > 0) : !p.pmc_ref)) &&
+    (!rd || (rd === 'ready' ? (p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'notready' ? !(p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'due' ? followUp(p).due : rd === 'awaiting' ? (followUp(p).sent && !followUp(p).closed) : !followUp(p).sent)) &&
     (!only || state.sel.has(p.id)));
 }
 function renderLetterSel() {
@@ -1199,6 +1208,52 @@ function senderBlock(s, lang) {
   const lines = [s.cName, s.cOrg, s.cAddress, s.cPhone && ((lang === 'mr' ? 'दूरध्वनी: ' : 'Phone: ') + s.cPhone), s.cEmail && ('Email: ' + s.cEmail)].filter(Boolean);
   return lines.map(esc).join('<br>');
 }
+const REMIND_DAYS = 15;
+const daysSince = iso => iso ? Math.floor((Date.now() - new Date(iso + 'T00:00:00').getTime()) / 864e5) : null;
+function followUp(p) {
+  const sent = (p.history || []).map(x => { const m = String(x).match(/^(\d{4}-\d{2}-\d{2}): (complaint|reminder) letter sent/); return m ? {d: m[1], t: m[2]} : null; }).filter(Boolean);
+  const reminders = sent.filter(x => x.t === 'reminder').length;
+  const first = (p.complaint_date || '').slice(0, 10) || (sent.map(x => x.d).sort()[0] || '');
+  const last = sent.map(x => x.d).sort().pop() || first;
+  const closed = ['action_taken', 'regularised', 'closed'].includes(p.status);
+  const days = daysSince(last);
+  const sentAny = !!first;
+  return {sent: sentAny, reminders, first, last, days, closed, due: sentAny && !closed && days != null && days >= REMIND_DAYS};
+}
+function followChip(p) {
+  const f = followUp(p); if (!f.sent || f.closed) return '';
+  return f.due ? badge(`Reminder due: ${f.days} days since last letter`, 'st', 'background:#b42318') : badge(`Letter sent ${f.days} day(s) ago`, 'st', 'background:#b25e09');
+}
+function reminderInfo(props) {
+  const fs = props.map(followUp), no = Math.max(0, ...fs.map(f => f.reminders)) + 1;
+  const first = fs.map(f => f.first).filter(Boolean).sort()[0] || '', lastRem = (props.flatMap(p => (p.history || []).map(x => { const m = String(x).match(/^(\d{4}-\d{2}-\d{2}): reminder letter sent/); return m ? m[1] : ''; })).filter(Boolean).sort().pop()) || '';
+  return {no, earlier: no - 1, lastRem, days: daysSince(first)};
+}
+function renderFollow() {
+  const box = $('#lFollow'); if (!box) return;
+  const fs = state.props.map(p => [p, followUp(p)]).filter(([p, f]) => f.sent && !f.closed);
+  const due = fs.filter(([p, f]) => f.due);
+  box.innerHTML = fs.length ? `<b>Follow-up:</b> ${fs.length} entr${fs.length === 1 ? 'y' : 'ies'} awaiting PMC action, <b style="color:${due.length ? '#b42318' : 'inherit'}">${due.length} due for a reminder</b> (${REMIND_DAYS}+ days since the last letter). ${due.length ? '<button type="button" id="lSelDue" class="primary">Prepare reminder for these</button>' : ''}` : '<b>Follow-up:</b> no letters marked as sent yet. After sending a letter, use "Mark these as sent to PMC" and the app will remind you when a follow-up is due.';
+  const b = $('#lSelDue'); if (b) b.onclick = () => { $('#lType').value = 'reminder'; $('#lReady').value = 'due'; state.sel.clear(); renderLetterSel(); letterRows().forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); toast('Reminder prepared for ' + state.sel.size + ' entr' + (state.sel.size === 1 ? 'y' : 'ies') + '. Check, then print.', 5000); };
+}
+$('#lMarkSent').onclick = async () => {
+  const c = currentLetterContext(); if (!c.props.length) return toast('Select at least one property first.');
+  if (!isAdmin()) return toast('Only an admin can mark letters as sent.');
+  const isRem = c.type === 'reminder', day = c.date || todayISO();
+  const ref = isRem ? '' : (prompt('PMC complaint or inward number, if you have one (optional):') || '').trim();
+  if (!confirm(`Record that a ${isRem ? 'reminder' : 'complaint'} letter for ${c.props.length} entr${c.props.length === 1 ? 'y' : 'ies'} was sent to PMC on ${day}?`)) return;
+  let ok = 0, skipped = 0;
+  for (const p of c.props) {
+    if (!isRem && followUp(p).sent) { skipped++; continue; }
+    try {
+      const np = JSON.parse(JSON.stringify(p)), f = followUp(p);
+      np.history = (np.history || []).concat([isRem ? `${day}: reminder letter sent to PMC (reminder no. ${f.reminders + 1})` : `${day}: complaint letter sent to PMC${ref ? ' (PMC ref ' + ref + ')' : ''}`]);
+      if (!isRem) { if (!np.complaint_date) np.complaint_date = day; if (ref && !np.pmc_ref) np.pmc_ref = ref; if (np.status === 'draft') np.status = 'reported'; }
+      const saved = await API.save(np); const i = state.props.findIndex(x => x.id === saved.id); if (i >= 0) state.props[i] = saved; ok++;
+    } catch (err) { toast('Could not update ' + p.name + ': ' + err.message, 6000); }
+  }
+  state.sel.clear(); renderAll(); toast(`Recorded for ${ok} entr${ok === 1 ? 'y' : 'ies'}.${skipped ? ' ' + skipped + ' already had a complaint recorded and were skipped (use a reminder for those).' : ''}`, 7000);
+};
 function earliestComplaint(props) { return props.map(p => p.complaint_date).filter(Boolean).sort()[0] || ''; }
 function refsOf(props) { return [...new Set(props.map(p => p.pmc_ref).filter(Boolean))].join(', '); }
 
@@ -1207,17 +1262,18 @@ function letterEN(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.join(' and ') : 'the area';
   const flex = props.some(p => p.category === 'flex');
+  const ri = reminderInfo(props);
   const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>PMC verification</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
   const to = ['The Assistant Municipal Commissioner', esc(s.rName), esc(s.rOffice), 'Pune Municipal Corporation', esc(s.rAddress)].filter(x => x);
   const subj = type === 'reminder'
-    ? `Reminder: action on our complaint dated ${esc(fmtDateEN(earliestComplaint(props)) || '____')}${refsOf(props) ? ' (Ref: ' + esc(refsOf(props)) + ')' : ''} regarding alleged encroachments on ${esc(roadTxt)}`
+    ? `Reminder${ri.no > 1 ? ' no. ' + ri.no : ''}: action on our complaint dated ${esc(fmtDateEN(earliestComplaint(props)) || '____')}${refsOf(props) ? ' (Ref: ' + esc(refsOf(props)) + ')' : ''} regarding alleged encroachments on ${esc(roadTxt)}`
     : `Request for inspection and action on alleged encroachment of margins, footpaths and road space${flex ? ' and alleged unauthorised flex banners / hoardings' : ''} along ${esc(roadTxt)}`;
   const intro = type === 'reminder'
-    ? `<p>We submitted a complaint on ${esc(fmtDateEN(earliestComplaint(props)) || '____')} about the ${n} location(s) listed below. We have not yet received information on the action taken.</p>`
+    ? `<p>We submitted a complaint on ${esc(fmtDateEN(earliestComplaint(props)) || '____')} about the ${n} location(s) listed below. We have not yet received information on the action taken.${ri.days != null ? ' It has now been ' + ri.days + ' days since our complaint.' : ''}${ri.earlier ? ' We have also sent ' + ri.earlier + ' earlier reminder(s), the latest on ' + esc(fmtDateEN(ri.lastRem) || '____') + '.' : ''}</p>`
     : `<p>I write to bring to your attention the alleged unauthorised use of side and front margins (open spaces), footpaths and road space at the ${n} location(s) listed below on ${esc(roadTxt)}. Details are in the table, and photographs with their capture dates are attached as annexures.${flex ? ' Some entries are flex banners or hoardings that appear to have been put up without any visible permission marking.' : ''}</p>
        <p>The photographs are from Google Street View or from our own site visits and show the position on the date stated. They do not by themselves establish whether a structure or use is sanctioned. We therefore request that your office inspect each location and verify it against the sanctioned plan, occupancy certificate and any permission on record.</p>`;
   const asks = type === 'reminder'
-    ? `<li>Please inform us of the status of action at each location within 7 days.</li><li>If action is pending, please state the reason and the expected timeline.</li><li>Please include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>`
+    ? `${ri.no > 1 ? '<li>As this is a repeat reminder, please treat the matter as urgent.</li>' : ''}<li>Please inform us of the status of action at each location within 7 days.</li><li>If action is pending, please state the reason and the expected timeline.</li><li>Please include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>`
     : `<li>Inspect the listed locations and verify them against the sanctioned plans and permissions.</li>
        <li>Where unauthorised construction, use of margin space or encroachment is found, issue notices and take action under the applicable provisions of law and regulations (including the Maharashtra Regional and Town Planning Act, 1966 and the UDCPR, as applicable).</li>
        <li>Include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>
@@ -1242,17 +1298,18 @@ function letterMR(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.map(roadMr).join(' व ') : 'परिसर';
   const flex = props.some(p => p.category === 'flex');
+  const ri = reminderInfo(props);
   const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>मनपा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
   const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
   const subj = type === 'reminder'
-    ? `स्मरणपत्र: दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजीच्या तक्रारीवर${refsOf(props) ? ' (संदर्भ: ' + esc(mrD(refsOf(props))) + ')' : ''} कार्यवाही करणेबाबत (${esc(roadTxt)})`
+    ? `स्मरणपत्र${ri.no > 1 ? ' क्र. ' + mrD(ri.no) : ''}: दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजीच्या तक्रारीवर${refsOf(props) ? ' (संदर्भ: ' + esc(mrD(refsOf(props))) + ')' : ''} कार्यवाही करणेबाबत (${esc(roadTxt)})`
     : `${esc(roadTxt)} परिसरातील मोकळ्या जागा (मार्जिन), पदपथ व रस्त्यावरील कथित अतिक्रमणांची${flex ? ' तसेच कथित अनधिकृत फ्लेक्स बॅनर / होर्डिंग्जची' : ''} पाहणी करून कारवाई करणेबाबत`;
   const intro = type === 'reminder'
-    ? `<p>यापूर्वी दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजी खालील ${N} ठिकाणांबाबत तक्रार सादर केली होती. त्यावर केलेल्या कार्यवाहीची माहिती अद्याप प्राप्त झालेली नाही.</p>`
+    ? `<p>यापूर्वी दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजी खालील ${N} ठिकाणांबाबत तक्रार सादर केली होती. त्यावर केलेल्या कार्यवाहीची माहिती अद्याप प्राप्त झालेली नाही.${ri.days != null ? ' तक्रार केल्याला आता ' + mrD(ri.days) + ' दिवस झाले आहेत.' : ''}${ri.earlier ? ' यापूर्वी ' + mrD(ri.earlier) + ' स्मरणपत्रे पाठविण्यात आली असून शेवटचे स्मरणपत्र दिनांक ' + esc(fmtDateMR(ri.lastRem) || '____') + ' रोजी पाठविले आहे.' : ''}</p>`
     : `<p>आपले लक्ष ${esc(roadTxt)} परिसरातील खालील ${N} ठिकाणी बाजूच्या व पुढील मोकळ्या जागांच्या (साईड/फ्रंट मार्जिन), पदपथांच्या व रस्त्याच्या कथित नियमबाह्य वापराकडे वेधण्यासाठी हे निवेदन सादर करत आहे. सविस्तर माहिती खालील तक्त्यात असून छायाचित्रे त्यांच्या दिनांकासह परिशिष्टांमध्ये जोडली आहेत.</p>
        <p>ही छायाचित्रे गुगल स्ट्रीट व्ह्यू किंवा आमच्या प्रत्यक्ष पाहणीतून घेतलेली असून नमूद दिनांकाची स्थिती दर्शवतात. त्यावरून एखादे बांधकाम किंवा वापर मंजूर आहे की नाही हे सिद्ध होत नाही. त्यामुळे कृपया प्रत्येक ठिकाणाची प्रत्यक्ष पाहणी करून मंजूर आराखडे, भोगवटा प्रमाणपत्र व इतर परवानग्यांशी पडताळणी करावी, ही विनंती.</p>`;
   const asks = type === 'reminder'
-    ? `<li>प्रत्येक ठिकाणी झालेल्या कार्यवाहीची स्थिती ७ दिवसांत कळवावी.</li><li>कार्यवाही प्रलंबित असल्यास त्याचे कारण व अपेक्षित कालमर्यादा नमूद करावी.</li><li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>`
+    ? `${ri.no > 1 ? '<li>हे वारंवार पाठविलेले स्मरणपत्र असल्याने कृपया या प्रकरणाची तातडीने दखल घ्यावी.</li>' : ''}<li>प्रत्येक ठिकाणी झालेल्या कार्यवाहीची स्थिती ७ दिवसांत कळवावी.</li><li>कार्यवाही प्रलंबित असल्यास त्याचे कारण व अपेक्षित कालमर्यादा नमूद करावी.</li><li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>`
     : `<li>वरील ठिकाणांची प्रत्यक्ष पाहणी करून मंजूर आराखडे व परवानग्यांशी पडताळणी करावी.</li>
        <li>अनधिकृत बांधकाम, मोकळ्या जागेचा नियमबाह्य वापर किंवा अतिक्रमण आढळल्यास लागू कायदेशीर तरतुदी व नियमावलीनुसार (महाराष्ट्र प्रादेशिक व नगररचना अधिनियम, १९६६ व UDCPR यांसह, जसे लागू असेल तसे) नोटीस देऊन कारवाई करावी.</li>
        <li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>
