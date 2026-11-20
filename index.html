@@ -343,9 +343,13 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   <div class="dhead"><h2>Add from photos</h2><button id="pClose">Close</button></div>
   <div class="dbody">
     <div class="dropzone" id="pDrop" tabindex="0">Drop photos here, paste screenshots (Ctrl+V), or
-      <button type="button" id="pAdd">choose photos</button>
+      <button type="button" id="pCam">Take a photo</button>
+      <button type="button" id="pAdd">From Photos / Gallery</button>
+      <button type="button" id="pDoc" class="primary">From Files / Google Drive (keeps location)</button>
+      <input type="file" id="pCamIn" accept="image/*" capture="environment" hidden>
       <input type="file" id="pFile" accept="image/*" multiple hidden>
-      <div class="hint">Several at once is fine. GPS and date are read from the photo when it has them. The AI reads shop names and describes what is visible in English and Marathi. You review everything before it is saved.</div>
+      <input type="file" id="pDocIn" accept=".jpg,.jpeg,.png,.webp,.heic,.heif" multiple hidden>
+      <div class="hint">Several at once is fine. Files / Google Drive keeps the GPS tag, which the Photos picker on Android often removes (you can also pin the spot on a map). A photo taken with Take a photo here has no GPS in most browsers, so use your camera app and pick the file, or drop a pin. Date and GPS are read from the photo when it has them. The AI reads shop names and describes what is visible in English and Marathi. You review everything before it is saved.</div>
     </div>
     <div id="pList"></div>
   </div>
@@ -1006,7 +1010,10 @@ $('#pList').addEventListener('click', e => {
   }
 });
 $('#pAdd').onclick = () => $('#pFile').click();
-$('#pFile').onchange = async e => { for (const f of [...e.target.files]) await addPhotoFile(f); e.target.value = ''; };
+const pickFiles = async e => { for (const f of [...e.target.files]) await addPhotoFile(f); e.target.value = ''; };
+$('#pFile').onchange = pickFiles; $('#pDocIn').onchange = pickFiles; $('#pCamIn').onchange = pickFiles;
+$('#pCam').onclick = () => $('#pCamIn').click();
+$('#pDoc').onclick = () => $('#pDocIn').click();
 const pDrop = $('#dlgPhoto');
 pDrop.addEventListener('dragover', e => e.preventDefault());
 pDrop.addEventListener('drop', async e => { e.preventDefault(); for (const f of [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))) await addPhotoFile(f); });
