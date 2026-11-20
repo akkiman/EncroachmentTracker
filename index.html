@@ -23,6 +23,7 @@ nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
 .rvcard img{width:100%;border-radius:8px;display:block}
 .rvcard textarea{min-height:56px}
 @media(max-width:700px){.rvcard{grid-template-columns:1fr}}
+.trbtn{padding:1px 8px;font-size:11px;margin-left:6px}
 .revchip{display:inline-block;border-radius:10px;padding:1px 7px;font-size:11px;border:1px solid var(--line)}
 .revchip.approved{background:#e6f6ee;color:var(--ok);border-color:#b7e3cd}.revchip.rejected{background:#fdecea;color:var(--bad);border-color:#f3c0bb}.revchip.pending{background:#fff4e0;color:var(--warn);border-color:#f2d9a8}
 .gallery figcaption button{padding:2px 7px;margin:3px 3px 0 0;font-size:11px}
@@ -307,7 +308,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     </div>
     <div class="g2">
       <div><label>What is observed (English)</label><textarea id="eDescEn" placeholder="e.g. Front margin used for outdoor seating under a temporary shed"></textarea></div>
-      <div><label>काय आढळले (मराठी)</label><textarea id="eDescMr"></textarea></div>
+      <div><label>काय आढळले (मराठी) <button type="button" class="trbtn" id="eTr">Translate from English</button></label><textarea id="eDescMr"></textarea></div>
     </div>
     <label>Google Maps link (any link, or paste "lat, lng")</label>
     <input id="eMaps" placeholder="https://maps.app.goo.gl/... or https://www.google.com/maps/@18.51,73.83,...">
@@ -466,6 +467,7 @@ const CATS = {
   front_margin:{en:'Front margin',            mr:'पुढील मोकळी जागा (फ्रंट मार्जिन)'},
   footpath    :{en:'Footpath',                mr:'पदपथ'},
   road        :{en:'Road space',              mr:'रस्ता'},
+  flex        :{en:'Flex banner / hoarding',  mr:'फ्लेक्स बॅनर / होर्डिंग'},
   other       :{en:'Other',                   mr:'इतर'}
 };
 const STATUS = {
@@ -985,7 +987,7 @@ function renderPhotos() {
             </div>
             <div class="g2">
               <div><label>Observed (English)</label><textarea data-e="desc_en">${esc(e.desc_en)}</textarea></div>
-              <div><label>काय आढळले (मराठी)</label><textarea data-e="desc_mr">${esc(e.desc_mr)}</textarea></div>
+              <div><label>काय आढळले (मराठी) <button type="button" class="trbtn" data-p="tr">Translate from English</button></label><textarea data-e="desc_mr">${esc(e.desc_mr)}</textarea></div>
             </div>
           </div>`).join('') + `<button type="button" data-p="addEntry">+ Add another business in this photo</button>` : ''}
       </div>
@@ -1016,8 +1018,9 @@ $('#pList').addEventListener('change', async e => {
   else toast('No coordinates found in that link. Use a full Google Maps link or paste "lat, lng".');
   renderPhotos();
 });
-$('#pList').addEventListener('click', e => {
+$('#pList').addEventListener('click', async e => {
   const t = e.target; if (!t.dataset.p) return; const it = photoOf(t);
+  if (t.dataset.p === 'tr') { const en = it.entries[+t.closest('.pent').dataset.i], ta = t.closest('.pent').querySelector('[data-e=desc_mr]'), tx = await translateToMr(en.desc_en, ta); if (tx) { en.desc_mr = tx; renderPhotos(); } return; }
   if (t.dataset.p === 'rm') { photo.items = photo.items.filter(x => x !== it); renderPhotos(); }
   if (t.dataset.p === 'retry') analyzeItem(it);
   if (t.dataset.p === 'edit') openEditor(it.dataUrl, url => { it.dataUrl = url; it.edited = true; renderPhotos(); });
@@ -1178,20 +1181,22 @@ function letterEN(c) {
   const {props, s, type, date, ref} = c, n = props.length;
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.join(' and ') : 'the area';
+  const flex = props.some(p => p.category === 'flex');
   const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>Plan check</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
   const to = ['The Assistant Municipal Commissioner', esc(s.rName), esc(s.rOffice), 'Pune Municipal Corporation', esc(s.rAddress)].filter(x => x);
   const subj = type === 'reminder'
     ? `Reminder: action on our complaint dated ${esc(fmtDateEN(earliestComplaint(props)) || '____')}${refsOf(props) ? ' (Ref: ' + esc(refsOf(props)) + ')' : ''} regarding alleged encroachments on ${esc(roadTxt)}`
-    : `Request for inspection and action on alleged encroachment of margins, footpaths and road space along ${esc(roadTxt)}`;
+    : `Request for inspection and action on alleged encroachment of margins, footpaths and road space${flex ? ' and alleged unauthorised flex banners / hoardings' : ''} along ${esc(roadTxt)}`;
   const intro = type === 'reminder'
     ? `<p>We submitted a complaint on ${esc(fmtDateEN(earliestComplaint(props)) || '____')} about the ${n} location(s) listed below. We have not yet received information on the action taken.</p>`
-    : `<p>I write to bring to your attention the alleged unauthorised use of side and front margins (open spaces), footpaths and road space at the ${n} location(s) listed below on ${esc(roadTxt)}. Details are in the table, and photographs with their capture dates are attached as annexures.</p>
+    : `<p>I write to bring to your attention the alleged unauthorised use of side and front margins (open spaces), footpaths and road space at the ${n} location(s) listed below on ${esc(roadTxt)}. Details are in the table, and photographs with their capture dates are attached as annexures.${flex ? ' Some entries are flex banners or hoardings that appear to have been put up without any visible permission marking.' : ''}</p>
        <p>The photographs are from Google Street View or from our own site visits and show the position on the date stated. They do not by themselves establish whether a structure or use is sanctioned. We therefore request that your office inspect each location and verify it against the sanctioned plan, occupancy certificate and any permission on record.</p>`;
   const asks = type === 'reminder'
     ? `<li>Please inform us of the status of action at each location within 7 days.</li><li>If action is pending, please state the reason and the expected timeline.</li><li>Please include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>`
     : `<li>Inspect the listed locations and verify them against the sanctioned plans and permissions.</li>
        <li>Where unauthorised construction, use of margin space or encroachment is found, issue notices and take action under the applicable provisions of law and regulations (including the Maharashtra Regional and Town Planning Act, 1966 and the UDCPR, as applicable).</li>
        <li>Include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>
+       ${flex ? '<li>For the flex banners and hoardings listed, verify whether permission or a licence exists for display at that location and, where none is found, have them removed and take action under the applicable provisions of law.</li>' : ''}
        <li>Inform us of the action taken, with a complaint reference number, within 15 days.</li>`;
   return `<div class="lang-en">
     <div class="addr">${senderBlock(s, 'en')}</div>
@@ -1211,11 +1216,12 @@ function letterMR(c) {
   const {props, s, type, date, ref} = c, n = props.length, N = mrD(n);
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.map(roadMr).join(' व ') : 'परिसर';
+  const flex = props.some(p => p.category === 'flex');
   const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>आराखडा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
   const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
   const subj = type === 'reminder'
     ? `स्मरणपत्र: दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजीच्या तक्रारीवर${refsOf(props) ? ' (संदर्भ: ' + esc(mrD(refsOf(props))) + ')' : ''} कार्यवाही करणेबाबत (${esc(roadTxt)})`
-    : `${esc(roadTxt)} परिसरातील मोकळ्या जागा (मार्जिन), पदपथ व रस्त्यावरील कथित अतिक्रमणांची पाहणी करून कारवाई करणेबाबत`;
+    : `${esc(roadTxt)} परिसरातील मोकळ्या जागा (मार्जिन), पदपथ व रस्त्यावरील कथित अतिक्रमणांची${flex ? ' तसेच कथित अनधिकृत फ्लेक्स बॅनर / होर्डिंग्जची' : ''} पाहणी करून कारवाई करणेबाबत`;
   const intro = type === 'reminder'
     ? `<p>यापूर्वी दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजी खालील ${N} ठिकाणांबाबत तक्रार सादर केली होती. त्यावर केलेल्या कार्यवाहीची माहिती अद्याप प्राप्त झालेली नाही.</p>`
     : `<p>आपले लक्ष ${esc(roadTxt)} परिसरातील खालील ${N} ठिकाणी बाजूच्या व पुढील मोकळ्या जागांच्या (साईड/फ्रंट मार्जिन), पदपथांच्या व रस्त्याच्या कथित नियमबाह्य वापराकडे वेधण्यासाठी हे निवेदन सादर करत आहे. सविस्तर माहिती खालील तक्त्यात असून छायाचित्रे त्यांच्या दिनांकासह परिशिष्टांमध्ये जोडली आहेत.</p>
@@ -1225,6 +1231,7 @@ function letterMR(c) {
     : `<li>वरील ठिकाणांची प्रत्यक्ष पाहणी करून मंजूर आराखडे व परवानग्यांशी पडताळणी करावी.</li>
        <li>अनधिकृत बांधकाम, मोकळ्या जागेचा नियमबाह्य वापर किंवा अतिक्रमण आढळल्यास लागू कायदेशीर तरतुदी व नियमावलीनुसार (महाराष्ट्र प्रादेशिक व नगररचना अधिनियम, १९६६ व UDCPR यांसह, जसे लागू असेल तसे) नोटीस देऊन कारवाई करावी.</li>
        <li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>
+       ${flex ? '<li>यादीतील फ्लेक्स बॅनर / होर्डिंग्जबाबत त्या ठिकाणी प्रदर्शनासाठी परवानगी किंवा परवाना आहे का याची पडताळणी करावी आणि परवानगी आढळली नाही तर ते काढून टाकावेत व लागू कायदेशीर तरतुदींनुसार कारवाई करावी.</li>' : ''}
        <li>केलेल्या कार्यवाहीची माहिती व तक्रार क्रमांक १५ दिवसांत कळवावा.</li>`;
   return `<div class="lang-mr">
     <div class="addr">${senderBlock(s, 'mr')}</div>
@@ -1415,6 +1422,14 @@ async function editSavedImage(p, idx) {
     });
   } catch (err) { toast(err.message, 5000); }
 }
+async function translateToMr(en, mrEl) {
+  en = (en || '').trim();
+  if (!en) return toast('Write the English text first.');
+  if (!remote()) return toast('Translation needs the shared sheet connected (it uses the AI).', 5000);
+  if (mrEl.value.trim() && !confirm('Replace the current Marathi text with a fresh translation of the English?')) return null;
+  toast('Translating...', 2000);
+  try { const r = await call('translate', {text: en}); return r.text; } catch (err) { toast('Could not translate: ' + err.message, 6000); return null; }
+}
 async function setReview(p, idx, review, extra) {
   const np = clone(p); Object.assign(np, extra || {}); np.images[idx].review = review;
   updateProp(await API.save(np));
@@ -1431,7 +1446,7 @@ function renderReview() {
       <div>
         <b>${esc(p.name)}</b> <span class="hint">(${esc(p.road || 'no road')}, ${esc((CATS[p.category] || CATS.other).en)})</span>
         <label>Observed (English)</label><textarea data-f="desc_en">${esc(p.desc_en || '')}</textarea>
-        <label>काय आढळले (मराठी)</label><textarea data-f="desc_mr">${esc(p.desc_mr || '')}</textarea>
+        <label>काय आढळले (मराठी) <button type="button" class="trbtn" data-rv="tr">Translate from English</button></label><textarea data-f="desc_mr">${esc(p.desc_mr || '')}</textarea>
         <div class="row-actions" style="margin-top:8px">
           <button class="primary" data-rv="approved">Approve</button><button class="danger" data-rv="rejected">Reject</button>
           <button data-rv="edit">Edit / blur photo</button><button data-rv="text">Save text only</button><button data-rv="open">Open entry</button>
@@ -1440,11 +1455,13 @@ function renderReview() {
     </div>`).join('') || '<p class="hint">Nothing is waiting for review.</p>';
 }
 function bindReview() {
+  $('#eTr').onclick = async () => { const t = await translateToMr($('#eDescEn').value, $('#eDescMr')); if (t) $('#eDescMr').value = t; };
   $('#rvList').addEventListener('click', async e => {
     const b = e.target.closest('button[data-rv]'); if (!b) return;
     const card = b.closest('.rvcard'), p = state.props.find(x => x.id === card.dataset.p), idx = +card.dataset.i; if (!p) return;
     const text = {desc_en: card.querySelector('[data-f=desc_en]').value.trim(), desc_mr: card.querySelector('[data-f=desc_mr]').value.trim()};
     try {
+      if (b.dataset.rv === 'tr') { const mr = card.querySelector('[data-f=desc_mr]'), t = await translateToMr(card.querySelector('[data-f=desc_en]').value, mr); if (t) mr.value = t; return; }
       if (b.dataset.rv === 'open') return openView(p);
       if (b.dataset.rv === 'edit') return editSavedImage(p, idx);
       if (b.dataset.rv === 'text') { updateProp(await API.save(Object.assign(clone(p), text))); return toast('Text saved.'); }
