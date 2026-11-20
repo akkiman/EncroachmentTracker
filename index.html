@@ -406,9 +406,43 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 /* ============================================================
    Labels (English and Marathi)
    ============================================================ */
-const ROADS = ['Prabhat Road', 'Bhandarkar Road'];
+const BASE_ROADS = ['Prabhat Road', 'Bhandarkar Road'];
+let ROADS = BASE_ROADS.slice();
+const extraRoads = new Set();
+const NEW_ROAD = '__new__';
+function cleanRoad(t) {
+  t = String(t || '').replace(/\s+/g, ' ').trim();
+  if (!t || /^unnamed/i.test(t)) return '';
+  if (/prabhat/i.test(t)) return 'Prabhat Road';
+  if (/bhandarkar/i.test(t)) return 'Bhandarkar Road';
+  return t.slice(0, 80);
+}
+function refreshRoads() {
+  const seen = new Set(BASE_ROADS);
+  (state.props || []).forEach(p => { if (p.road) seen.add(p.road); });
+  extraRoads.forEach(r => seen.add(r));
+  ROADS = BASE_ROADS.concat([...seen].filter(r => !BASE_ROADS.includes(r)).sort((a, b) => a.localeCompare(b)));
+}
+const roadMr = r => ROAD_MR[r || ''] || r;
+function roadOpts(selected, first) {
+  const list = ROADS.concat(selected && !ROADS.includes(selected) ? [selected] : []);
+  return [['', first || 'Choose road...']].concat(list.map(r => [r, r]), [[NEW_ROAD, '+ Add another road...']])
+    .map(([v, t]) => `<option value="${esc(v)}" ${selected === v ? 'selected' : ''}>${esc(t)}</option>`).join('');
+}
+function askNewRoad() {
+  const t = cleanRoad(prompt('Name of the road (for example: Law College Road):'));
+  if (t) extraRoads.add(t); refreshRoads(); return t;
+}
+function fillRoadSelects() {
+  refreshRoads();
+  const keep = id => $('#' + id).value;
+  const f = keep('fRoad'), l = keep('lRoad'), e = keep('eRoad'), b = keep('bRoad');
+  fillSelect($('#fRoad'), ROADS.map(r => [r, r]), 'All roads'); $('#fRoad').value = f;
+  fillSelect($('#lRoad'), ROADS.map(r => [r, r]), 'All roads'); $('#lRoad').value = l;
+  $('#eRoad').innerHTML = roadOpts(e); $('#bRoad').innerHTML = roadOpts(b);
+}
 const REV = {pending: 'Pending review', approved: 'Approved', rejected: 'Rejected'};
-const ROAD_MR = {'Prabhat Road':'प्रभात रस्ता','Bhandarkar Road':'भांडारकर रस्ता','Other':'इतर','':'-'};
+const ROAD_MR = {'Prabhat Road':'प्रभात रस्ता','Bhandarkar Road':'भांडारकर रस्ता','Law College Road':'लॉ कॉलेज रस्ता','Other':'इतर','':'-'};
 const CATS = {
   side_margin :{en:'Side margin',             mr:'बाजूची मोकळी जागा (साईड मार्जिन)'},
   front_margin:{en:'Front margin',            mr:'पुढील मोकळी जागा (फ्रंट मार्जिन)'},
@@ -581,7 +615,7 @@ async function loadData() {
   catch (e) { toast('Could not load: ' + e.message, 5000); updateSyncLabel(); }
   renderAll();
 }
-function renderAll() { renderList(); renderMap(); renderLetterSel(); renderLetter(); renderReview(); }
+function renderAll() { fillRoadSelects(); renderList(); renderMap(); renderLetterSel(); renderLetter(); renderReview(); }
 
 function fillSelect(el, items, firstLabel) {
   el.innerHTML = (firstLabel ? `<option value="">${esc(firstLabel)}</option>` : '') + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
@@ -732,7 +766,7 @@ async function detectEditRoad() {
   if (!remote() || isNaN(lat) || isNaN(lng)) return;
   try {
     const g = (await call('geocode', {lat, lng})).place;
-    if (g && g.road) { $('#eRoad').value = g.road; $('#eMapsMsg').textContent += ' Road set to ' + g.road + '.'; }
+    if (g && g.road) { g.road = cleanRoad(g.road); extraRoads.add(g.road); fillRoadSelects(); $('#eRoad').value = g.road; $('#eMapsMsg').textContent += ' Road set to ' + g.road + '.'; }
     else $('#eMapsMsg').textContent += ' Could not tell the road from this spot. Please choose it.';
   } catch (e) {}
 }
@@ -841,7 +875,7 @@ async function readExif(file) {
 
 const photo = {items: []};
 const normName = n => String(n || '').toLowerCase().replace(/[^a-z0-9ऀ-ॿ]+/g, '');
-function roadFrom(text) { return /prabhat/i.test(text || '') ? 'Prabhat Road' : /bhandarkar/i.test(text || '') ? 'Bhandarkar Road' : ''; }
+function roadFrom(text) { return cleanRoad(text); }
 
 function openPhoto() { photo.items = []; renderPhotos(); $('#dlgPhoto').showModal(); }
 
@@ -916,7 +950,7 @@ function renderPhotos() {
               ${state.props.some(p => normName(p.name) && normName(p.name) === normName(e.name)) ? '<span class="chip ok">Will be added to the existing record</span>' : ''}</label>
             <div class="g3">
               <div><label>Name *</label><input data-e="name" value="${esc(e.name)}"></div>
-              <div><label>Road</label><select data-e="road" ${e.road ? '' : 'style="border-color:#b42318"'}>${[['', 'Choose road...']].concat(ROADS.map(r => [r, r])).map(([v, t]) => `<option value="${esc(v)}" ${e.road === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+              <div><label>Road</label><select data-e="road" ${e.road ? '' : 'style="border-color:#b42318"'}>${roadOpts(e.road)}</select></div>
               <div><label>Category</label><select data-e="category">${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${e.category === k ? 'selected' : ''}>${esc(v.en)}</option>`).join('')}</select></div>
             </div>
             <div class="g2">
@@ -940,7 +974,7 @@ async function geocodePhoto(it) {
 const photoOf = el => photo.items.find(x => x.id === el.closest('.pcard').dataset.id);
 $('#pList').addEventListener('input', async e => {
   const t = e.target, it = photoOf(t); if (!it) return;
-  if (t.dataset.e) { const en = it.entries[+t.closest('.pent').dataset.i]; en[t.dataset.e] = t.type === 'checkbox' ? t.checked : t.value; if (t.dataset.e === 'road') { en.roadSrc = 'user'; renderPhotos(); } if (t.dataset.e === 'include') renderPhotos(); return; }
+  if (t.dataset.e) { const en = it.entries[+t.closest('.pent').dataset.i]; en[t.dataset.e] = t.type === 'checkbox' ? t.checked : t.value; if (t.dataset.e === 'road') { if (t.value === NEW_ROAD) en.road = askNewRoad(); en.roadSrc = 'user'; renderPhotos(); } if (t.dataset.e === 'include') renderPhotos(); return; }
   if (t.dataset.p === 'date') it.date = t.value;
   if (t.dataset.p === 'source') it.source = t.value;
 });
@@ -984,7 +1018,7 @@ $('#pSave').onclick = async () => {
   const todo = photo.items.filter(it => it.entries.some(e => e.include));
   for (const it of todo) {
     if (!it.date) return toast('Every photo needs a date (see the Street View footer).', 4500);
-    for (const e of it.entries.filter(x => x.include)) { if (!e.name.trim()) return toast('Every entry needs a name. Untick entries you do not want.', 4500); if (!e.road) return toast('Choose the road (Prabhat Road or Bhandarkar Road) for every entry.', 4500); }
+    for (const e of it.entries.filter(x => x.include)) { if (!e.name.trim()) return toast('Every entry needs a name. Untick entries you do not want.', 4500); if (!e.road) return toast('Choose the road for every entry.', 4500); }
   }
   const btn = $('#pSave'); btn.disabled = true; btn.textContent = 'Saving...';
   let made = 0, merged = 0;
@@ -1023,7 +1057,7 @@ $('#bCancel').onclick = $('#bClose').onclick = () => $('#dlgBulk').close();
 $('#bSave').onclick = async () => {
   const names = $('#bNames').value.split('\n').map(s => s.trim()).filter(Boolean);
   if (!names.length) return toast('Add at least one name.');
-  if (!$('#bRoad').value) return toast('Choose Prabhat Road or Bhandarkar Road.');
+  if (!$('#bRoad').value || $('#bRoad').value === NEW_ROAD) return toast('Choose the road.');
   const btn = $('#bSave'); btn.disabled = true;
   try {
     for (const name of names) {
@@ -1079,7 +1113,7 @@ function rowsFor(props, lang, type) {
     const imgTxt = imgs.length ? imgs.map(im => (lang === 'mr' ? (SRC[im.source] || SRC.Other).mr + ', ' + fmtDateMR(im.date) : (SRC[im.source] || SRC.Other).en + ', ' + fmtShort(im.date))).join('; ') : '-';
     const name = lang === 'mr' ? (p.name_mr || p.name) : p.name;
     const obs = lang === 'mr' ? (p.desc_mr || (CATS[p.category] || CATS.other).mr) : (p.desc_en || (CATS[p.category] || CATS.other).en);
-    const road = lang === 'mr' ? ROAD_MR[p.road || ''] : (p.road || '-');
+    const road = lang === 'mr' ? roadMr(p.road) : (p.road || '-');
     const ver = (VER[p.verification] || VER.pending)[lang];
     const ref = type === 'reminder' ? (lang === 'mr' ? mrD(p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateMR(p.complaint_date) : '') : (p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateEN(p.complaint_date) : '')) : null;
     const n = lang === 'mr' ? mrD(i + 1) : (i + 1);
@@ -1129,7 +1163,7 @@ function letterEN(c) {
 function letterMR(c) {
   const {props, s, type, date, ref} = c, n = props.length, N = mrD(n);
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
-  const roadTxt = roads.length ? roads.map(r => ROAD_MR[r]).join(' व ') : 'परिसर';
+  const roadTxt = roads.length ? roads.map(roadMr).join(' व ') : 'परिसर';
   const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>आराखडा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
   const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
   const subj = type === 'reminder'
@@ -1167,7 +1201,7 @@ function annexHTML(c) {
       const credit = /google/i.test(src) ? ' © Google. Shown only to identify the location. / © गुगल. केवळ ठिकाण ओळखण्यासाठी.' : '';
       return `<figure><img src="${esc(im.url)}" alt=""><figcaption>${esc(s.en)} / ${esc(s.mr)}, ${esc(fmtDateEN(im.date) || 'date missing')} / ${esc(fmtDateMR(im.date))}${im.caption ? '. ' + esc(im.caption) : ''}.${credit}</figcaption></figure>`;
     }).join('');
-    return `<div class="pb"><h4>Annexure ${i + 1} / परिशिष्ट ${mrD(i + 1)}: ${esc(p.name)}${p.name_mr ? ' / ' + esc(p.name_mr) : ''} (${esc(p.road || '-')} / ${esc(ROAD_MR[p.road || ''])})</h4>
+    return `<div class="pb"><h4>Annexure ${i + 1} / परिशिष्ट ${mrD(i + 1)}: ${esc(p.name)}${p.name_mr ? ' / ' + esc(p.name_mr) : ''} (${esc(p.road || '-')} / ${esc(roadMr(p.road))})</h4>
       <div>${esc((CATS[p.category] || CATS.other).en)} / ${esc((CATS[p.category] || CATS.other).mr)}</div>
       ${p.lat != null ? `<div>Location / स्थान: ${esc(p.lat)}, ${esc(p.lng)}${maps ? ' (' + esc(maps) + ')' : ''}</div>` : (maps ? `<div>Location / स्थान: ${esc(maps)}</div>` : '')}
       ${figs || '<p><i>No image attached. / छायाचित्र जोडलेले नाही.</i></p>'}</div>`;
@@ -1476,13 +1510,11 @@ function renderMembers() {
    ============================================================ */
 function init() {
   applySetupHash();
-  fillSelect($('#fRoad'), ROADS.map(r => [r, r]), 'All roads');
   fillSelect($('#fCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]), 'All categories');
   fillSelect($('#fStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
-  fillSelect($('#lRoad'), ROADS.map(r => [r, r]), 'All roads');
   fillSelect($('#lStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
-  fillSelect($('#eRoad'), [['', 'Choose road']].concat(ROADS.map(r => [r, r])));
-  fillSelect($('#bRoad'), [['', 'Choose road']].concat(ROADS.map(r => [r, r])));
+  fillRoadSelects();
+  ['eRoad', 'bRoad'].forEach(id => $('#' + id).addEventListener('change', ev => { if (ev.target.value === NEW_ROAD) { const t = askNewRoad(); $('#eRoad').innerHTML = roadOpts($('#eRoad').value === NEW_ROAD ? '' : $('#eRoad').value); $('#bRoad').innerHTML = roadOpts($('#bRoad').value === NEW_ROAD ? '' : $('#bRoad').value); ev.target.innerHTML = roadOpts(t); } }));
   fillSelect($('#eCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]));
   fillSelect($('#bCat'), Object.entries(CATS).map(([k, v]) => [k, v.en])); $('#bCat').value = 'front_margin';
   fillSelect($('#eVer'), Object.entries(VER).map(([k, v]) => [k, v.en]));
