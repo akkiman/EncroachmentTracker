@@ -570,7 +570,7 @@ function bindSettings() {
     const f = e.target.files[0]; if (!f) return;
     try {
       const arr = JSON.parse(await f.text()); if (!Array.isArray(arr)) throw new Error('Not a backup file');
-      for (const p of arr) await API.save(p);
+      for (const p of arr) await API.save(p, true);
       toast('Restored ' + arr.length + ' record(s).'); loadData();
     } catch (err) { toast('Restore failed: ' + err.message, 5000); }
     e.target.value = '';
@@ -625,8 +625,11 @@ const localRead = () => { try { return JSON.parse(localStorage.getItem('enc_prop
 const localWrite = a => { try { localStorage.setItem('enc_props', JSON.stringify(a)); } catch (e) { throw new Error('Browser storage is full. Connect the shared sheet to store images.'); } };
 const API = {
   async list() { return remote() ? (await call('list')).properties : localRead(); },
-  async save(p) {
-    if (remote()) return (await call('save', {property: p})).property;
+  async save(p, force) {
+    if (remote()) {
+      try { return (await call('save', {property: p, force: force === true})).property; }
+      catch (e) { if (/was changed by/.test(e.message)) { try { await loadData(true); } catch (x) {} } throw e; }
+    }
     const all = localRead(); const now = new Date().toISOString();
     if (!p.id) { p.id = uid(); p.created_at = now; p.created_by = me(); }
     p.updated_at = now; const i = all.findIndex(x => x.id === p.id);
@@ -646,9 +649,21 @@ const API = {
 const state = {props: [], editing: null, pending: [], viewing: null, sel: new Set()};
 let map, layer;
 
-async function loadData() {
+let lastSync = '';
+function newestStamp(a) { return a.reduce((m, p) => (p.updated_at && p.updated_at > m ? p.updated_at : m), ''); }
+// Full load the first time, then only rows changed since the last load (plus the id list so deletions disappear).
+async function loadData(full) {
   $('#sync').textContent = 'Loading...';
-  try { state.props = await API.list(); updateSyncLabel(); }
+  try {
+    if (remote() && lastSync && !full && state.props.length) {
+      const r = await call('list', {since: lastSync});
+      const ids = new Set(r.ids || []), map = new Map(state.props.map(p => [p.id, p]));
+      (r.properties || []).forEach(p => map.set(p.id, p));
+      state.props = [...map.values()].filter(p => ids.has(p.id));
+    } else state.props = await API.list();
+    lastSync = newestStamp(state.props) || lastSync;
+    updateSyncLabel();
+  }
   catch (e) { toast('Could not load: ' + e.message, 5000); updateSyncLabel(); }
   renderAll();
 }
@@ -701,10 +716,10 @@ let mapMarkers = {};
 function renderMap() {
   if (!window.L) return;
   if (!map) {
-    map = L.map('map').setView([18.5175, 73.8385], 16);
+    map = L.map('map', {preferCanvas: true}).setView([18.5175, 73.8385], 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     layer = L.layerGroup().addTo(map);
-    map.on('zoomend', () => { const show = map.getZoom() >= 17; Object.values(mapMarkers).forEach(m => { if (show) m.openTooltip(); else m.closeTooltip(); }); });
+    map.on('zoomend moveend', updateLabels);
   }
   layer.clearLayers(); mapMarkers = {};
   const pts = [], rows = filtered(), used = {};
@@ -712,8 +727,11 @@ function renderMap() {
   rows.forEach(p => {
     if (p.lat == null || p.lng == null || isNaN(p.lat)) { missing++; return; }
     const st = STATUS[p.status] || STATUS.draft; used[p.status || 'draft'] = st;
-    const m = L.marker([p.lat, p.lng], {icon: pinIcon(st.color), title: p.name}).addTo(layer);
-    m.bindTooltip(esc(p.name), {permanent: true, direction: 'top', className: 'pinlbl', opacity: 1});
+    // Many entries: light canvas dots. Few entries: full pins. Name labels are added only for pins in view when zoomed in.
+    const m = rows.length > 150
+      ? L.circleMarker([p.lat, p.lng], {radius: 7, color: '#fff', weight: 2, fillColor: st.color, fillOpacity: 1}).addTo(layer)
+      : L.marker([p.lat, p.lng], {icon: pinIcon(st.color), title: p.name}).addTo(layer);
+    m._pname = p.name;
     m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br>${esc(p.road || '')}<br><button onclick="openViewById('${esc(p.id)}')">Details</button> ${mapsUrlFor(p) ? `<a href="${esc(mapsUrlFor(p))}" target="_blank">Google Maps</a>` : ''}`);
     mapMarkers[p.id] = m; pts.push([p.lat, p.lng]);
   });
@@ -721,7 +739,16 @@ function renderMap() {
   $('#mapNote').innerHTML = `${pts.length} of ${rows.length} on the map. ${missing ? `<b>${missing} have no location yet</b> (they show a "Set location" button in the list). ` : ''}<button type="button" id="mapFit" style="padding:1px 8px;font-size:11px">Zoom to all</button><br>${lg}`;
   const fit = $('#mapFit'); if (fit) fit.onclick = () => { if (pts.length) map.fitBounds(pts, {padding: [40, 40], maxZoom: 17}); };
   if (pts.length && !renderMap.fitted) { map.fitBounds(pts, {padding:[40,40], maxZoom:17}); renderMap.fitted = true; }
-  setTimeout(() => map.invalidateSize(), 50);
+  setTimeout(() => { map.invalidateSize(); updateLabels(); }, 50);
+}
+function updateLabels() {
+  if (!map) return;
+  const show = map.getZoom() >= 17, b = map.getBounds();
+  Object.values(mapMarkers).forEach(m => {
+    const want = show && b.contains(m.getLatLng());
+    if (want && !m._lbl) { m.bindTooltip(esc(m._pname), {permanent: true, direction: 'top', className: 'pinlbl', opacity: 1}); m.openTooltip(); m._lbl = true; }
+    else if (!want && m._lbl) { m.unbindTooltip(); m._lbl = false; }
+  });
 }
 function locateOnMap(p) {
   const m = mapMarkers[p.id]; if (!m || !map) return;
@@ -1360,6 +1387,7 @@ function renderLetter() {
   if (!c.props.length) { box.innerHTML = '<p class="hint">' + (noEvidence ? noEvidence + ' selected property(ies) have no approved photo yet, so nothing can go into a letter. Approve photos in the Review tab.' : 'Select one or more properties on the left to preview the letter.') + '</p>'; warn.innerHTML = ''; return; }
   const missing = [];
   if (noEvidence) missing.push(noEvidence + ' selected property(ies) left out because no photo is approved yet');
+  if (c.props.length > 40) missing.push(c.props.length + ' entries in one letter is long to print; consider one letter per road or per batch of about 25');
   if (!c.s.cName) missing.push('your name and address (Settings)');
   warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. Check your facts before sending. The letter only asks PMC to inspect and verify.</div>` : '';
   box.innerHTML = buildLetterHTML(c);
@@ -1668,7 +1696,7 @@ function init() {
   $('#lDate').value = todayISO();
   ['q', 'fRoad', 'fCat', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { renderMap.fitted = false; renderList(); renderMap(); }));
   $('#btnAdd').onclick = () => openEdit(null);
-  $('#btnRefresh').onclick = loadData;
+  $('#btnRefresh').onclick = () => loadData(true);
   $$('nav button').forEach(b => b.onclick = () => {
     $$('nav button').forEach(x => x.classList.toggle('on', x === b));
     $$('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
