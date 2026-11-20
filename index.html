@@ -18,6 +18,9 @@ nav{display:flex;gap:4px}
 nav button{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--mute)}
 nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
 #sync{margin-left:auto;font-size:12px;color:var(--mute)}
+#authGate{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}#authGate.off{display:none}.authbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;max-width:400px;width:100%}.authbox h2{margin:0 0 6px;font-size:18px}.authbox button{margin-top:12px;margin-right:6px}
+.badge{background:var(--bad);color:#fff;border-radius:10px;padding:0 6px;font-size:11px;margin-left:4px}
+table.mem{width:100%;border-collapse:collapse;background:#fff}table.mem th,table.mem td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}table.mem button{margin:2px 4px 2px 0;padding:4px 8px}
 main{padding:14px 16px;max-width:1500px;margin:0 auto}
 .view{display:none}.view.on{display:block}
 button,.btn{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--ink)}
@@ -98,10 +101,42 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   <nav>
     <button data-view="list" class="on">Properties</button>
     <button data-view="letter">Letter / पत्र</button>
+    <button data-view="members" id="navMembers" style="display:none">Members<span id="memBadge" class="badge" style="display:none"></span></button>
     <button data-view="settings">Settings</button>
   </nav>
   <span id="sync"></span>
+  <button id="btnOut" style="display:none">Sign out</button>
 </header>
+
+<div id="authGate" class="off">
+  <div class="authbox">
+    <h2>Encroachment Tracker</h2>
+    <p class="hint">For approved members only. Log in with your registered email or mobile number. A code is sent to your email.</p>
+    <div id="agStep1">
+      <label>Email or mobile number</label>
+      <input id="agId" autocomplete="username">
+      <button class="primary" id="agGo">Continue</button>
+    </div>
+    <div id="agStepReq" hidden>
+      <p class="hint">We could not find you in the member list. Request access and an admin will review it.</p>
+      <label>Your name</label><input id="agName">
+      <label>Email</label><input id="agEmail" type="email">
+      <label>Mobile number (10 digits)</label><input id="agMobile" inputmode="numeric">
+      <button class="primary" id="agReq">Request access</button><button id="agBack1">Back</button>
+    </div>
+    <div id="agStepOtp" hidden>
+      <p id="agOtpMsg" class="hint"></p>
+      <label>6-digit code</label>
+      <input id="agCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+      <button class="primary" id="agVerify">Log in</button><button id="agResend">Send a new code</button><button id="agBack2">Back</button>
+    </div>
+    <div id="agStepPend" hidden>
+      <p><b>Request received.</b> An admin needs to approve you before you can view or add anything. You will get an email when it is approved.</p>
+      <button id="agBack3">Back</button>
+    </div>
+    <p id="agMsg" class="hint" style="color:var(--bad)"></p>
+  </div>
+</div>
 
 <main>
 <!-- ================= PROPERTIES ================= -->
@@ -159,6 +194,21 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   </div>
 </section>
 
+<!-- ================= MEMBERS (admin) ================= -->
+<section id="view-members" class="view">
+  <div class="panel">
+    <b>Members and access requests</b>
+    <p class="hint">Only approved members can view, upload or save. People who request access stay pending until you approve them.</p>
+    <div style="overflow-x:auto"><table class="mem"><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody id="memBody"></tbody></table></div>
+    <div class="g2" style="margin-top:12px">
+      <div><label>Add a member directly (pre-approved)</label><input id="maName" placeholder="Name"></div>
+      <div><label>&nbsp;</label><input id="maEmail" placeholder="Email"></div>
+      <div><input id="maMobile" placeholder="Mobile (optional)"></div>
+      <div><button id="maAdd" class="primary">Add member</button> <button id="maRefresh">Refresh</button></div>
+    </div>
+  </div>
+</section>
+
 <!-- ================= SETTINGS ================= -->
 <section id="view-settings" class="view">
   <div class="g2">
@@ -166,15 +216,12 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
       <b>Connection (shared data)</b>
       <label>Apps Script web app URL (ends with /exec)</label>
       <input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
-      <label>Team passcode</label>
-      <input id="sPass" type="password" autocomplete="off">
-      <label>Your name (recorded on edits)</label>
+      <label>Your name (practice mode only; shared mode uses your member name)</label>
       <input id="sMe">
       <div class="row-actions" style="margin-top:10px">
         <button id="sTest">Test connection</button>
-        <button id="sShare">Copy team setup link</button>
       </div>
-      <p class="hint">With no URL set, the app runs in practice mode and keeps data only in this browser. The team setup link contains the URL and passcode, so share it privately.</p>
+      <p class="hint">With no URL set, the app runs in practice mode and keeps data only in this browser. Members log in with an emailed code, so there is nothing to share.</p>
       <div class="row-actions">
         <button id="sExport">Back up all data (JSON)</button>
         <button id="sImport">Restore from JSON</button>
@@ -366,7 +413,7 @@ function mapsUrlFor(p) {
    Settings
    ============================================================ */
 const DEFAULT_SETTINGS = {
-  scriptUrl:'', passcode:'', me:'',
+  scriptUrl:'', me:'',
   cName:'', cOrg:'', cPhone:'', cEmail:'', cAddress:'',
   rName:'Shri. Balasaheb Dhawale Patil', rNameMr:'',
   rOffice:'Shivajinagar-Ghole Road Ward Office', rOfficeMr:'शिवाजीनगर-घोले रोड क्षेत्रीय कार्यालय',
@@ -376,22 +423,17 @@ const DEFAULT_SETTINGS = {
 };
 function getS() { try { return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem('enc_settings') || '{}')); } catch (e) { return {...DEFAULT_SETTINGS}; } }
 function setS(o) { localStorage.setItem('enc_settings', JSON.stringify(Object.assign(getS(), o))); }
-const SETTING_FIELDS = {sUrl:'scriptUrl', sPass:'passcode', sMe:'me', cName:'cName', cOrg:'cOrg', cPhone:'cPhone', cEmail:'cEmail', cAddress:'cAddress',
+const SETTING_FIELDS = {sUrl:'scriptUrl', sMe:'me', cName:'cName', cOrg:'cOrg', cPhone:'cPhone', cEmail:'cEmail', cAddress:'cAddress',
   rName:'rName', rNameMr:'rNameMr', rOffice:'rOffice', rOfficeMr:'rOfficeMr', rAddress:'rAddress', rAddressMr:'rAddressMr', rEmail:'rEmail'};
 function loadSettingsUI() { const s = getS(); for (const [id, k] of Object.entries(SETTING_FIELDS)) $('#' + id).value = s[k] || ''; }
 function bindSettings() {
   for (const [id, k] of Object.entries(SETTING_FIELDS)) {
-    $('#' + id).addEventListener('change', () => { setS({[k]: $('#' + id).value.trim()}); if (id === 'sUrl' || id === 'sPass') { updateSyncLabel(); loadData(); } else renderLetter(); });
+    $('#' + id).addEventListener('change', () => { setS({[k]: $('#' + id).value.trim()}); if (id === 'sUrl') { updateSyncLabel(); if (!remote() || sess().token) loadData(); else showGate(); } else renderLetter(); });
   }
   $('#sTest').onclick = async () => {
-    setS({scriptUrl: $('#sUrl').value.trim(), passcode: $('#sPass').value});
+    setS({scriptUrl: $('#sUrl').value.trim()});
     try { const r = await call('list'); toast('Connected. ' + r.properties.length + ' record(s) in the sheet.'); loadData(); }
     catch (e) { toast('Failed: ' + e.message, 5000); }
-  };
-  $('#sShare').onclick = async () => {
-    const s = getS(); if (!s.scriptUrl) return toast('Set the web app URL first.');
-    const link = location.href.split('#')[0] + '#setup=' + btoa(unescape(encodeURIComponent(JSON.stringify({u:s.scriptUrl, p:s.passcode}))));
-    try { await navigator.clipboard.writeText(link); toast('Team setup link copied. Share it privately.'); } catch (e) { prompt('Copy this link:', link); }
   };
   $('#sExport').onclick = () => download('encroachment-backup-' + todayISO() + '.json', JSON.stringify(state.props, null, 2), 'application/json');
   $('#sImport').onclick = () => $('#sFile').click();
@@ -408,23 +450,40 @@ function bindSettings() {
 function applySetupHash() {
   const m = location.hash.match(/#setup=(.+)$/);
   if (!m) return;
-  try { const o = JSON.parse(decodeURIComponent(escape(atob(m[1])))); setS({scriptUrl:o.u, passcode:o.p}); history.replaceState(null, '', location.pathname + location.search); toast('Connected to the team sheet.'); }
+  try { const o = JSON.parse(decodeURIComponent(escape(atob(m[1])))); setS({scriptUrl:o.u}); history.replaceState(null, '', location.pathname + location.search); toast('Connected to the team sheet.'); }
   catch (e) { /* ignore bad hash */ }
 }
-function updateSyncLabel() { $('#sync').textContent = getS().scriptUrl ? 'Shared sheet connected' : 'Practice mode (this browser only)'; }
+function updateSyncLabel() {
+  const ss = sess();
+  $('#sync').textContent = remote() ? (ss.token ? 'Signed in as ' + ss.name + (ss.role === 'admin' ? ' (admin)' : '') : 'Not signed in') : 'Practice mode (this browser only)';
+  $('#btnOut').style.display = remote() && ss.token ? '' : 'none';
+  $('#navMembers').style.display = remote() && ss.token && ss.role === 'admin' ? '' : 'none';
+}
 
 /* ============================================================
    Data layer: Apps Script (shared) or localStorage (practice mode)
    ============================================================ */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbySAuc7Z3HsrOYa93fclV6Bz14oe2mdg_bGzPxmUQzWsOC-nST5vfAcG20gMYFbfsSR/exec';
+const scriptUrl = () => getS().scriptUrl || SCRIPT_URL;
+function sess() { try { return JSON.parse(localStorage.getItem('enc_sess') || 'null') || {}; } catch (e) { return {}; } }
+function setSess(o) { if (o) localStorage.setItem('enc_sess', JSON.stringify(o)); else localStorage.removeItem('enc_sess'); }
+const me = () => (remote() ? sess().name : '') || getS().me || '';
 async function call(action, payload = {}) {
-  const s = getS();
-  if (!s.scriptUrl) throw new Error('No web app URL set in Settings.');
-  const res = await fetch(s.scriptUrl, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({action, passcode: s.passcode}, payload))});
+  const url = scriptUrl();
+  if (!url) throw new Error('No web app URL set in Settings.');
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), action === 'analyze' ? 75000 : 60000);
+  let res;
+  try { res = await fetch(url, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({action, token: sess().token || ''}, payload)), signal: ctl.signal}); }
+  catch (e) { throw new Error(e.name === 'AbortError' ? 'The server took too long to answer. Try again in a minute.' : 'Could not reach the server. Check your connection.'); }
+  finally { clearTimeout(timer); }
   let j; try { j = await res.json(); } catch (e) { throw new Error('Unexpected reply from the script. Check the deployment settings.'); }
-  if (!j.ok) throw new Error(j.error || 'Request failed');
+  if (!j.ok) {
+    if (j.code === 'AUTH') { setSess(null); updateSyncLabel(); showGate('1', j.error); }
+    throw new Error(j.error || 'Request failed');
+  }
   return j;
 }
-const remote = () => !!getS().scriptUrl;
+const remote = () => !!scriptUrl();
 const localRead = () => { try { return JSON.parse(localStorage.getItem('enc_props') || '[]'); } catch (e) { return []; } };
 const localWrite = a => { try { localStorage.setItem('enc_props', JSON.stringify(a)); } catch (e) { throw new Error('Browser storage is full. Connect the shared sheet to store images.'); } };
 const API = {
@@ -432,7 +491,7 @@ const API = {
   async save(p) {
     if (remote()) return (await call('save', {property: p})).property;
     const all = localRead(); const now = new Date().toISOString();
-    if (!p.id) { p.id = uid(); p.created_at = now; p.created_by = getS().me; }
+    if (!p.id) { p.id = uid(); p.created_at = now; p.created_by = me(); }
     p.updated_at = now; const i = all.findIndex(x => x.id === p.id);
     if (i < 0) all.push(p); else all[i] = p; localWrite(all); return p;
   },
@@ -634,9 +693,9 @@ async function saveEdit() {
       desc_en: $('#eDescEn').value.trim(), desc_mr: $('#eDescMr').value.trim(), maps_url: $('#eMaps').value.trim(),
       lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, images,
       verification: $('#eVer').value, status: $('#eStatus').value, complaint_date: $('#eCDate').value, pmc_ref: $('#eRef').value.trim(),
-      verification_note: $('#eVerNote').value.trim(), updated_by: getS().me
+      verification_note: $('#eVerNote').value.trim(), updated_by: me()
     });
-    const hist = (e.history || []).slice(), who = getS().me || 'someone', day = todayISO();
+    const hist = (e.history || []).slice(), who = me() || 'someone', day = todayISO();
     if (!e.id) hist.push(`${day}: created by ${who}`);
     else {
       if (e.status !== next.status) hist.push(`${day}: status ${(STATUS[e.status] || STATUS.draft).en} to ${STATUS[next.status].en} (${who})`);
@@ -828,7 +887,7 @@ $('#pSave').onclick = async () => {
     for (const it of todo) {
       const url = await API.upload(it.dataUrl, 'photo-' + Date.now() + '-' + uid() + '.jpg');
       for (const e of it.entries.filter(x => x.include)) {
-        const name = e.name.trim(), day = todayISO(), who = getS().me || 'someone';
+        const name = e.name.trim(), day = todayISO(), who = me() || 'someone';
         const image = {url, date: it.date, source: it.source, caption: name + ' (' + CATS[e.category].en + ')'};
         const ex = state.props.find(p => normName(p.name) === normName(name));
         let p;
@@ -841,7 +900,7 @@ $('#pSave').onclick = async () => {
         } else {
           p = {id:'', name, name_mr: e.name_mr, road: e.road, category: e.category, desc_en: e.desc_en, desc_mr: e.desc_mr,
                maps_url: it.lat != null ? `https://www.google.com/maps?q=${it.lat},${it.lng}` : '', lat: it.lat, lng: it.lng, images: [image],
-               verification: 'pending', status: 'draft', history: [`${day}: created from photo upload (AI-assisted draft, reviewed by ${who})`], updated_by: getS().me}; made++;
+               verification: 'pending', status: 'draft', history: [`${day}: created from photo upload (AI-assisted draft, reviewed by ${who})`], updated_by: me()}; made++;
         }
         const saved = await API.save(p);
         const i = state.props.findIndex(x => x.id === saved.id); if (i < 0) state.props.push(saved); else state.props[i] = saved;
@@ -863,7 +922,7 @@ $('#bSave').onclick = async () => {
   try {
     for (const name of names) {
       const cat = /\bopp\b|footpath|stall|bhel|cart/i.test(name) ? 'footpath' : $('#bCat').value;
-      const p = await API.save({id:'', name, road: $('#bRoad').value, category: cat, status:'draft', verification:'pending', images:[], history:[todayISO() + ': created in bulk by ' + (getS().me || 'someone')], updated_by: getS().me});
+      const p = await API.save({id:'', name, road: $('#bRoad').value, category: cat, status:'draft', verification:'pending', images:[], history:[todayISO() + ': created in bulk by ' + (me() || 'someone')], updated_by: me()});
       state.props.push(p);
     }
     $('#dlgBulk').close(); renderAll(); toast(names.length + ' record(s) created. Open each one to add location, images and notes.', 5000);
@@ -1042,6 +1101,78 @@ $('#lDoc').onclick = async () => {
 };
 
 /* ============================================================
+   Login (email OTP) and member approval
+   ============================================================ */
+let agId = '', MEMBERS = [];
+function showGate(step, msg) {
+  step = step || '1';
+  $('#authGate').classList.remove('off');
+  ['1', 'Req', 'Otp', 'Pend'].forEach(k => { $('#agStep' + k).hidden = k !== step; });
+  $('#agMsg').textContent = msg || '';
+}
+function hideGate() { $('#authGate').classList.add('off'); }
+async function agRun(btn, fn) {
+  btn.disabled = true; $('#agMsg').textContent = '';
+  try { await fn(); } catch (e) { $('#agMsg').textContent = e.message; }
+  btn.disabled = false;
+}
+function agState(r) {
+  if (r.state === 'otp_sent') { $('#agOtpMsg').textContent = 'We sent a 6-digit code to ' + r.hint + '. It works for 10 minutes.'; $('#agCode').value = ''; showGate('Otp'); setTimeout(() => $('#agCode').focus(), 50); }
+  else if (r.state === 'pending') showGate('Pend');
+  else if (r.state === 'unknown') {
+    const v = agId; $('#agEmail').value = v.includes('@') ? v : ''; $('#agMobile').value = v.includes('@') ? '' : v; showGate('Req');
+  } else showGate('1', 'Access has not been granted for this account. Please contact the admin.');
+}
+async function afterLogin() {
+  hideGate(); updateSyncLabel();
+  await loadData();
+  if (sess().role === 'admin') loadMembers();
+}
+function bindAuth() {
+  $('#agGo').onclick = () => agRun($('#agGo'), async () => { agId = $('#agId').value.trim(); if (!agId) throw new Error('Enter your email or mobile number.'); agState(await call('auth_start', {id: agId})); });
+  $('#agReq').onclick = () => agRun($('#agReq'), async () => {
+    const email = $('#agEmail').value.trim(); agId = email;
+    agState(await call('auth_request', {name: $('#agName').value.trim(), email, mobile: $('#agMobile').value.trim()}));
+  });
+  $('#agVerify').onclick = () => agRun($('#agVerify'), async () => {
+    const r = await call('auth_verify', {id: agId, code: $('#agCode').value.trim()});
+    setSess(Object.assign({token: r.token}, r.member)); await afterLogin();
+  });
+  $('#agResend').onclick = () => agRun($('#agResend'), async () => agState(await call('auth_start', {id: agId})));
+  ['agBack1', 'agBack2', 'agBack3'].forEach(id => { $('#' + id).onclick = () => showGate('1'); });
+  $('#agId').addEventListener('keydown', e => { if (e.key === 'Enter') $('#agGo').click(); });
+  $('#agCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#agVerify').click(); });
+  $('#btnOut').onclick = () => { setSess(null); updateSyncLabel(); $('#agId').value = ''; showGate('1'); };
+  $('#maAdd').onclick = async () => {
+    try { await call('member_add', {name: $('#maName').value.trim(), email: $('#maEmail').value.trim(), mobile: $('#maMobile').value.trim()}); ['maName', 'maEmail', 'maMobile'].forEach(i => $('#' + i).value = ''); toast('Member added and approved.'); loadMembers(); }
+    catch (e) { toast(e.message, 5000); }
+  };
+  $('#maRefresh').onclick = loadMembers;
+}
+async function loadMembers() {
+  if (sess().role !== 'admin') return;
+  try { MEMBERS = (await call('members_list')).members; renderMembers(); } catch (e) { toast('Could not load members: ' + e.message, 5000); }
+}
+function renderMembers() {
+  const order = {pending: 0, approved: 1, rejected: 2, blocked: 3};
+  const rows = MEMBERS.slice().sort((a, b) => (order[a.status] - order[b.status]) || a.name.localeCompare(b.name));
+  const me_ = sess().email;
+  $('#memBody').innerHTML = rows.map(m => {
+    const b = (label, patch, cls) => `<button class="${cls || ''}" data-e="${esc(m.email)}" data-p='${JSON.stringify(patch)}'>${label}</button>`;
+    let acts = '';
+    if (m.status === 'pending') acts = b('Approve', {status:'approved'}, 'primary') + b('Reject', {status:'rejected'}, 'danger');
+    else if (m.status === 'approved') acts = (m.email === me_ ? '' : b('Block', {status:'blocked'}, 'danger') + (m.role === 'admin' ? b('Remove admin', {role:'member'}) : b('Make admin', {role:'admin'})));
+    else acts = b('Approve', {status:'approved'});
+    return `<tr><td>${esc(m.name)}${m.role === 'admin' ? ' <small>(admin)</small>' : ''}</td><td>${esc(m.email)}</td><td>${esc(m.mobile || '')}</td><td>${esc(m.status)}</td><td>${m.last_login ? esc(m.last_login.slice(0, 10)) : ''}</td><td>${acts}</td></tr>`;
+  }).join('') || '<tr><td colspan="6">No members yet.</td></tr>';
+  $$('#memBody button').forEach(btn => btn.onclick = async () => {
+    try { await call('member_update', Object.assign({email: btn.dataset.e}, JSON.parse(btn.dataset.p))); loadMembers(); } catch (e) { toast(e.message, 5000); }
+  });
+  const np = MEMBERS.filter(m => m.status === 'pending').length;
+  $('#memBadge').textContent = np; $('#memBadge').style.display = np ? '' : 'none';
+}
+
+/* ============================================================
    Init
    ============================================================ */
 function init() {
@@ -1067,9 +1198,11 @@ function init() {
     if (b.dataset.view === 'list' && map) setTimeout(() => map.invalidateSize(), 50);
     if (b.dataset.view === 'letter') { renderLetterSel(); renderLetter(); }
   });
-  loadSettingsUI(); bindSettings(); updateSyncLabel();
-  window.addEventListener('focus', () => { if (remote() && !$('#dlgEdit').open) loadData(); });
+  loadSettingsUI(); bindSettings(); bindAuth(); updateSyncLabel();
+  window.addEventListener('focus', () => { if (remote() && sess().token && !$('#dlgEdit').open) { loadData(); if (sess().role === 'admin') loadMembers(); } });
+  if (remote() && !sess().token) { showGate('1'); return; }
   loadData();
+  if (remote()) call('whoami').then(r => { setSess(Object.assign({}, sess(), r.member)); updateSyncLabel(); if (sess().role === 'admin') loadMembers(); }).catch(() => {});
 }
 if (typeof document !== 'undefined' && document.getElementById('view-list')) init();
 </script>
