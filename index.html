@@ -54,6 +54,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 .imgrow{display:grid;grid-template-columns:90px 1fr;gap:10px;margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fafbfc}
 .imgrow img{width:90px;height:70px;object-fit:cover;border-radius:6px}
 .hint{font-size:12px;color:var(--mute)}
+.pcard{border:1px solid var(--line);border-radius:12px;padding:10px;margin:10px 0;display:grid;grid-template-columns:150px 1fr;gap:12px;background:#fff}.pcard>img{width:150px;height:110px;object-fit:cover;border-radius:8px}.pent{border:1px solid var(--line);border-radius:10px;padding:8px;margin:8px 0;background:#fafbfc}.pent.off{opacity:.5}.chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:#eef2f8;color:#334;margin-right:4px}.chip.warn{background:#fff1d6;color:#7a4a00}.chip.ok{background:#dff5e8;color:#0a5c38}@media(max-width:620px){.pcard{grid-template-columns:1fr}}
 .dropzone{border:2px dashed #b9c4d6;border-radius:10px;padding:14px;text-align:center;color:var(--mute);margin-top:8px}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:8px 0}
 .gallery figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
@@ -110,7 +111,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <select id="fRoad"><option value="">All roads</option></select>
     <select id="fCat"><option value="">All categories</option></select>
     <select id="fStatus"><option value="">All statuses</option></select>
-    <button id="btnAdd" class="primary">+ Add property</button>
+    <button id="btnPhoto" class="primary">Add from photos (AI)</button>
+    <button id="btnAdd">+ Add manually</button>
     <button id="btnBulk">Bulk add names</button>
     <button id="btnRefresh" title="Reload from the sheet">Refresh</button>
     <button id="btnCsv">Export CSV</button>
@@ -257,6 +259,25 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   <div class="dhead"><h2 id="vTitle"></h2><button id="vClose">Close</button></div>
   <div class="dbody" id="vBody"></div>
   <div class="dfoot"><button id="vEdit">Edit</button><button id="vMaps">Open in Google Maps</button></div>
+</dialog>
+
+
+<!-- ================= PHOTO (AI) DIALOG ================= -->
+<dialog id="dlgPhoto" style="width:min(900px,96vw)">
+  <div class="dhead"><h2>Add from photos</h2><button id="pClose">Close</button></div>
+  <div class="dbody">
+    <div class="dropzone" id="pDrop" tabindex="0">Drop photos here, paste screenshots (Ctrl+V), or
+      <button type="button" id="pAdd">choose photos</button>
+      <input type="file" id="pFile" accept="image/*" multiple hidden>
+      <div class="hint">Several at once is fine. GPS and date are read from the photo when it has them. The AI reads shop names and describes what is visible in English and Marathi. You review everything before it is saved.</div>
+    </div>
+    <div id="pList"></div>
+  </div>
+  <div class="dfoot">
+    <span id="pSummary" class="hint" style="margin-right:auto"></span>
+    <button id="pCancel">Cancel</button>
+    <button id="pSave" class="primary">Create entries</button>
+  </div>
 </dialog>
 
 <!-- ================= BULK DIALOG ================= -->
@@ -635,6 +656,200 @@ $('#eDelete').onclick = async () => {
   if (!confirm('Delete this property permanently? (Images stay in the Drive folder.)')) return;
   try { await API.del(state.editing.id); state.props = state.props.filter(x => x.id !== state.editing.id); $('#dlgEdit').close(); renderAll(); toast('Deleted.'); }
   catch (e) { toast('Delete failed: ' + e.message); }
+};
+
+
+/* ============================================================
+   Add from photos (EXIF + AI)
+   ============================================================ */
+function parseTiff(v, start) {
+  const little = v.getUint16(start) === 0x4949;
+  const g16 = o => v.getUint16(o, little), g32 = o => v.getUint32(o, little);
+  const SZ = {1:1, 2:1, 3:2, 4:4, 5:8, 7:1, 9:4, 10:8};
+  const readIfd = off => { const n = g16(off), t = {}; for (let i = 0; i < n; i++) { const e = off + 2 + i * 12; t[g16(e)] = {type: g16(e + 2), count: g32(e + 4), at: e + 8}; } return t; };
+  const dataOff = t => (SZ[t.type] || 1) * t.count <= 4 ? t.at : start + g32(t.at);
+  const str = t => { const o = dataOff(t); let r = ''; for (let i = 0; i < t.count - 1; i++) r += String.fromCharCode(v.getUint8(o + i)); return r; };
+  const rats = t => { const o = dataOff(t), a = []; for (let i = 0; i < t.count; i++) { const d = g32(o + i * 8 + 4); a.push(d ? g32(o + i * 8) / d : 0); } return a; };
+  const out = {};
+  const t0 = readIfd(start + g32(start + 4));
+  if (t0[0x8769]) {
+    const ex = readIfd(start + g32(t0[0x8769].at));
+    const d = ex[0x9003] ? str(ex[0x9003]) : '';
+    const m = d.match(/^(\d{4}):(\d{2}):(\d{2})/); if (m) out.date = `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  if (t0[0x8825]) {
+    const g = readIfd(start + g32(t0[0x8825].at));
+    if (g[2] && g[4]) {
+      const la = rats(g[2]), lo = rats(g[4]);
+      let lat = la[0] + la[1] / 60 + la[2] / 3600, lng = lo[0] + lo[1] / 60 + lo[2] / 3600;
+      if (g[1] && /S/i.test(str(g[1]))) lat = -lat; if (g[3] && /W/i.test(str(g[3]))) lng = -lng;
+      if (isFinite(lat) && isFinite(lng) && (lat || lng)) { out.lat = +lat.toFixed(6); out.lng = +lng.toFixed(6); }
+    }
+  }
+  return out;
+}
+async function readExif(file) {
+  try {
+    const v = new DataView(await file.slice(0, 262144).arrayBuffer());
+    if (v.getUint16(0) !== 0xFFD8) return {};
+    let off = 2;
+    while (off < v.byteLength - 10) {
+      const marker = v.getUint16(off), len = v.getUint16(off + 2);
+      if (marker === 0xFFE1 && v.getUint32(off + 4) === 0x45786966) return parseTiff(v, off + 10);
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      off += 2 + len;
+    }
+  } catch (e) {}
+  return {};
+}
+
+const photo = {items: []};
+const normName = n => String(n || '').toLowerCase().replace(/[^a-z0-9ऀ-ॿ]+/g, '');
+function roadFrom(text) { return /prabhat/i.test(text || '') ? 'Prabhat Road' : /bhandarkar/i.test(text || '') ? 'Bhandarkar Road' : ''; }
+
+function openPhoto() { photo.items = []; renderPhotos(); $('#dlgPhoto').showModal(); }
+
+async function addPhotoFile(file) {
+  const it = {id: uid(), status: 'reading', entries: [], date: '', source: 'Google Street View', lat: null, lng: null, locText: '', place: null, exif: {}};
+  photo.items.push(it); renderPhotos();
+  try {
+    it.exif = await readExif(file);
+    it.dataUrl = await resizeImage(file, 1600);
+    if (it.exif.lat != null) { it.lat = it.exif.lat; it.lng = it.exif.lng; it.locText = it.lat + ', ' + it.lng; it.source = 'Own photo'; }
+    if (it.exif.date) it.date = it.exif.date;
+  } catch (e) { it.status = 'error'; it.error = e.message; renderPhotos(); return; }
+  await analyzeItem(it);
+}
+async function analyzeItem(it) {
+  it.status = 'analyzing'; it.error = ''; renderPhotos();
+  if (!remote()) {
+    it.status = 'done'; it.entries = [blankEntry()]; it.note = 'AI analysis needs the shared sheet connected (Settings). You can still fill the entry by hand.'; renderPhotos(); return;
+  }
+  try {
+    const m = it.dataUrl.match(/^data:(.+?);base64,(.+)$/);
+    const r = (await call('analyze', {mime: m[1], data: m[2], lat: it.lat, lng: it.lng})).result;
+    it.place = r.place || null;
+    if (r.image_date && !it.date) it.date = r.image_date;
+    if (r.source && SRC[r.source] && it.exif.lat == null) it.source = r.source;
+    const road = (it.place && it.place.road) || roadFrom(r.road_text);
+    it.entries = (r.entries || []).map(e => ({
+      name: e.name || '', name_mr: e.name_mr || '', category: CATS[e.category] ? e.category : 'front_margin',
+      desc_en: e.observation_en || '', desc_mr: e.observation_mr || '', seen: e.encroachment_seen !== false, conf: e.confidence || '',
+      include: e.encroachment_seen !== false, road
+    }));
+    if (!it.entries.length) { it.entries = [blankEntry(road)]; it.entries[0].include = false; it.note = 'No business was detected in this photo. You can add one by hand.'; }
+    it.note = it.note || (r.notes || '');
+    it.status = 'done';
+  } catch (e) { it.status = 'error'; it.error = e.message; }
+  renderPhotos();
+}
+const blankEntry = road => ({name:'', name_mr:'', category:'front_margin', desc_en:'', desc_mr:'', seen:true, conf:'', include:true, road: road || ''});
+
+function renderPhotos() {
+  const items = photo.items;
+  $('#pList').innerHTML = items.map(it => `
+    <div class="pcard" data-id="${it.id}">
+      ${it.dataUrl ? `<img src="${it.dataUrl}" alt="">` : '<div></div>'}
+      <div>
+        <div class="g3">
+          <div><label>Location (GPS from photo, Maps link, or "lat, lng")</label><input data-p="locText" value="${esc(it.locText)}" placeholder="paste a Google Maps link"></div>
+          <div><label>Photo date *</label><input type="date" data-p="date" value="${esc(it.date)}"></div>
+          <div><label>Source</label><select data-p="source">${Object.keys(SRC).map(k => `<option ${it.source === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+        </div>
+        <div style="margin:6px 0">
+          ${it.exif.lat != null ? '<span class="chip ok">GPS read from photo</span>' : (it.lat != null ? '<span class="chip ok">Location set</span>' : '<span class="chip warn">No location yet</span>')}
+          ${it.place ? `<span class="chip">${esc(it.place.address || '')}</span>` : ''}
+          ${it.status === 'reading' || it.status === 'analyzing' ? '<span class="chip">' + (it.status === 'reading' ? 'Reading photo...' : 'AI is analysing...') + '</span>' : ''}
+          <button type="button" data-p="rm" class="danger" style="float:right">Remove photo</button>
+          ${it.status === 'error' ? `<div class="hint" style="color:#b42318">${esc(it.error)} <button type="button" data-p="retry">Try again</button></div>` : ''}
+          ${it.note ? `<div class="hint">${esc(it.note)}</div>` : ''}
+        </div>
+        ${it.status === 'done' || it.status === 'error' ? it.entries.map((e, i) => `
+          <div class="pent ${e.include ? '' : 'off'}" data-i="${i}">
+            <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-e="include" ${e.include ? 'checked' : ''}> Create this entry
+              ${e.conf ? `<span class="chip ${e.conf === 'high' ? 'ok' : 'warn'}">AI confidence: ${esc(e.conf)}</span>` : ''}
+              ${e.seen ? '' : '<span class="chip">AI saw nothing questionable</span>'}
+              ${state.props.some(p => normName(p.name) && normName(p.name) === normName(e.name)) ? '<span class="chip ok">Will be added to the existing record</span>' : ''}</label>
+            <div class="g3">
+              <div><label>Name *</label><input data-e="name" value="${esc(e.name)}"></div>
+              <div><label>Road</label><select data-e="road">${[['', 'Not set']].concat(ROADS.map(r => [r, r])).map(([v, t]) => `<option value="${esc(v)}" ${e.road === v ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>
+              <div><label>Category</label><select data-e="category">${Object.entries(CATS).map(([k, v]) => `<option value="${k}" ${e.category === k ? 'selected' : ''}>${esc(v.en)}</option>`).join('')}</select></div>
+            </div>
+            <div class="g2">
+              <div><label>Observed (English)</label><textarea data-e="desc_en">${esc(e.desc_en)}</textarea></div>
+              <div><label>काय आढळले (मराठी)</label><textarea data-e="desc_mr">${esc(e.desc_mr)}</textarea></div>
+            </div>
+          </div>`).join('') + `<button type="button" data-p="addEntry">+ Add another business in this photo</button>` : ''}
+      </div>
+    </div>`).join('');
+  const n = items.reduce((a, it) => a + it.entries.filter(e => e.include).length, 0);
+  $('#pSummary').textContent = items.length ? `${items.length} photo(s), ${n} entr${n === 1 ? 'y' : 'ies'} ready. Check each one before saving.` : '';
+  $('#pSave').disabled = !n;
+}
+const photoOf = el => photo.items.find(x => x.id === el.closest('.pcard').dataset.id);
+$('#pList').addEventListener('input', async e => {
+  const t = e.target, it = photoOf(t); if (!it) return;
+  if (t.dataset.e) { const en = it.entries[+t.closest('.pent').dataset.i]; en[t.dataset.e] = t.type === 'checkbox' ? t.checked : t.value; if (t.dataset.e === 'include') renderPhotos(); return; }
+  if (t.dataset.p === 'date') it.date = t.value;
+  if (t.dataset.p === 'source') it.source = t.value;
+});
+$('#pList').addEventListener('change', async e => {
+  const t = e.target, it = photoOf(t); if (!it || t.dataset.p !== 'locText') return;
+  it.locText = t.value.trim(); let c = parseCoords(it.locText);
+  if (!c && isShortMapsLink(it.locText) && remote()) { try { const r = await call('resolve', {url: it.locText}); if (r.lat != null) c = {lat: r.lat, lng: r.lng}; } catch (err) { toast(err.message); } }
+  if (c) { it.lat = c.lat; it.lng = c.lng; if (remote()) { try { const g = (await call('geocode', {lat: c.lat, lng: c.lng})).place; it.place = g; if (g && g.road) it.entries.forEach(en => { if (!en.road) en.road = g.road; }); } catch (err) {} } }
+  else toast('No coordinates found in that link. Use a full Google Maps link or paste "lat, lng".');
+  renderPhotos();
+});
+$('#pList').addEventListener('click', e => {
+  const t = e.target; if (!t.dataset.p) return; const it = photoOf(t);
+  if (t.dataset.p === 'rm') { photo.items = photo.items.filter(x => x !== it); renderPhotos(); }
+  if (t.dataset.p === 'retry') analyzeItem(it);
+  if (t.dataset.p === 'addEntry') { it.entries.push(blankEntry((it.place && it.place.road) || '')); renderPhotos(); }
+});
+$('#pAdd').onclick = () => $('#pFile').click();
+$('#pFile').onchange = async e => { for (const f of [...e.target.files]) await addPhotoFile(f); e.target.value = ''; };
+const pDrop = $('#dlgPhoto');
+pDrop.addEventListener('dragover', e => e.preventDefault());
+pDrop.addEventListener('drop', async e => { e.preventDefault(); for (const f of [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'))) await addPhotoFile(f); });
+pDrop.addEventListener('paste', async e => { const its = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/')); if (!its.length) return; e.preventDefault(); for (const i of its) await addPhotoFile(i.getAsFile()); });
+$('#pCancel').onclick = $('#pClose').onclick = () => $('#dlgPhoto').close();
+$('#btnPhoto').onclick = openPhoto;
+
+$('#pSave').onclick = async () => {
+  const todo = photo.items.filter(it => it.entries.some(e => e.include));
+  for (const it of todo) {
+    if (!it.date) return toast('Every photo needs a date (see the Street View footer).', 4500);
+    for (const e of it.entries.filter(x => x.include)) if (!e.name.trim()) return toast('Every entry needs a name. Untick entries you do not want.', 4500);
+  }
+  const btn = $('#pSave'); btn.disabled = true; btn.textContent = 'Saving...';
+  let made = 0, merged = 0;
+  try {
+    for (const it of todo) {
+      const url = await API.upload(it.dataUrl, 'photo-' + Date.now() + '-' + uid() + '.jpg');
+      for (const e of it.entries.filter(x => x.include)) {
+        const name = e.name.trim(), day = todayISO(), who = getS().me || 'someone';
+        const image = {url, date: it.date, source: it.source, caption: name + ' (' + CATS[e.category].en + ')'};
+        const ex = state.props.find(p => normName(p.name) === normName(name));
+        let p;
+        if (ex) {
+          p = JSON.parse(JSON.stringify(ex)); p.images = (p.images || []).concat([image]);
+          if (!p.desc_en && e.desc_en) p.desc_en = e.desc_en; if (!p.desc_mr && e.desc_mr) p.desc_mr = e.desc_mr;
+          if (p.lat == null && it.lat != null) { p.lat = it.lat; p.lng = it.lng; p.maps_url = p.maps_url || `https://www.google.com/maps?q=${it.lat},${it.lng}`; }
+          if (!p.road && e.road) p.road = e.road;
+          p.history = (p.history || []).concat([`${day}: photo added from photo upload by ${who}`]); merged++;
+        } else {
+          p = {id:'', name, name_mr: e.name_mr, road: e.road, category: e.category, desc_en: e.desc_en, desc_mr: e.desc_mr,
+               maps_url: it.lat != null ? `https://www.google.com/maps?q=${it.lat},${it.lng}` : '', lat: it.lat, lng: it.lng, images: [image],
+               verification: 'pending', status: 'draft', history: [`${day}: created from photo upload (AI-assisted draft, reviewed by ${who})`], updated_by: getS().me}; made++;
+        }
+        const saved = await API.save(p);
+        const i = state.props.findIndex(x => x.id === saved.id); if (i < 0) state.props.push(saved); else state.props[i] = saved;
+      }
+    }
+    $('#dlgPhoto').close(); renderAll(); toast(`${made} created, ${merged} updated. Open each one to add the PMC reference or check the details.`, 6000);
+  } catch (err) { toast('Save failed: ' + err.message, 6000); }
+  btn.textContent = 'Create entries'; renderPhotos();
 };
 
 /* Bulk add */
