@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encroachment Tracker | Prabhat Road and Bhandarkar Road</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#667085;--line:#e3e7ee;--brand:#0b5fff;--brand-ink:#fff;
+--ok:#0a7d4f;--warn:#b25e09;--bad:#b42318;--s-draft:#8a94a6;--s-reported:#0b5fff;--s-notice_issued:#b25e09;--s-action_taken:#0a7d4f;--s-regularised:#7a3fd1;--s-closed:#444}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,'Noto Sans Devanagari',system-ui,Arial,sans-serif}
+header{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;padding:10px 16px;flex-wrap:wrap}
+header h1{font-size:16px;margin:0}
+nav{display:flex;gap:4px}
+nav button{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--mute)}
+nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
+#sync{margin-left:auto;font-size:12px;color:var(--mute)}
+main{padding:14px 16px;max-width:1500px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+button,.btn{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--ink)}
+button.primary{background:var(--brand);color:var(--brand-ink);border-color:var(--brand)}
+button.danger{color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;border:1px solid #cfd6e2;border-radius:8px;padding:7px 9px;background:#fff;width:100%;color:var(--ink)}
+textarea{min-height:64px;resize:vertical}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 3px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.bar input,.bar select{width:auto;min-width:130px}
+.bar .grow{flex:1;min-width:180px}
+.split{display:grid;grid-template-columns:minmax(320px,1fr) minmax(360px,1fr);gap:12px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+#map{height:calc(100vh - 190px);min-height:360px;border-radius:12px;border:1px solid var(--line)}
+#list{display:grid;gap:8px;align-content:start;max-height:calc(100vh - 190px);overflow:auto;padding-right:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:64px 1fr;gap:10px}
+.thumb{width:64px;height:64px;border-radius:8px;object-fit:cover;background:#e9edf3}
+.card h3{margin:0 0 3px;font-size:14px}
+.badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--mute);margin-right:4px;background:#fafbfc}
+.badge.st{color:#fff;border:0}
+.row-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.row-actions button{padding:3px 9px;font-size:12px}
+.empty{padding:30px;text-align:center;color:var(--mute);background:#fff;border:1px dashed var(--line);border-radius:12px}
+dialog{border:0;border-radius:14px;padding:0;width:min(760px,94vw);max-height:92vh;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(20,28,40,.45)}
+.dhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff}
+.dhead h2{margin:0;font-size:16px}
+.dbody{padding:4px 16px 12px;overflow:auto;max-height:calc(92vh - 120px)}
+.dfoot{display:flex;gap:8px;justify-content:flex-end;padding:10px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:#fff}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:620px){.g2,.g3{grid-template-columns:1fr}}
+.imgrow{display:grid;grid-template-columns:90px 1fr;gap:10px;margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fafbfc}
+.imgrow img{width:90px;height:70px;object-fit:cover;border-radius:6px}
+.hint{font-size:12px;color:var(--mute)}
+.dropzone{border:2px dashed #b9c4d6;border-radius:10px;padding:14px;text-align:center;color:var(--mute);margin-top:8px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin:8px 0}
+.gallery figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.gallery img{width:100%;display:block}
+.gallery figcaption{font-size:11px;padding:5px 7px;color:var(--mute)}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 10px;margin:8px 0}
+.kv div:nth-child(odd){color:var(--mute)}
+.lettergrid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px}
+@media(max-width:960px){.lettergrid{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.sel{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:6px}
+.sel label{display:flex;gap:8px;align-items:flex-start;margin:0;padding:6px 8px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink)}
+.sel input{width:auto;margin-top:3px}
+.issue{color:var(--warn);font-size:11px}
+.paper{background:#fff;color:#000;border:1px solid var(--line);border-radius:6px;padding:22px 26px;font:11pt/1.5 'Noto Sans Devanagari',Inter,Arial,sans-serif;max-height:calc(100vh - 150px);overflow:auto}
+.paper h4{margin:14px 0 6px;font-size:11pt}
+.paper table{border-collapse:collapse;width:100%;font-size:9.5pt;margin:8px 0}
+.paper th,.paper td{border:1px solid #777;padding:4px 6px;vertical-align:top;text-align:left}
+.paper th{background:#eee}
+.paper ol{margin:6px 0 6px 20px;padding:0}
+.paper .addr{white-space:pre-line}
+.paper .pb{border-top:2px dashed #bbb;margin:20px 0;padding-top:4px}
+.paper figure{margin:8px 0;page-break-inside:avoid}
+.paper figure img{max-width:100%;max-height:9cm;display:block}
+.paper figcaption{font-size:9pt;color:#333}
+.warnbox{background:#fff7e6;border:1px solid #f1d59a;border-radius:8px;padding:8px 10px;margin:8px 0;font-size:12px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#1c2430;color:#fff;padding:9px 14px;border-radius:8px;z-index:3000;display:none;max-width:90vw}
+.leaflet-popup-content button{padding:3px 9px;font-size:12px;margin-top:4px}
+@media print{
+  header,.no-print,#view-list,#view-settings,.lettergrid>.panel:first-child,.toast{display:none!important}
+  body{background:#fff}main{padding:0;max-width:none}
+  .lettergrid{display:block}
+  .paper{border:0;padding:0;max-height:none;overflow:visible;font-size:11pt}
+  .paper .pb{border:0;margin:0;padding:0;page-break-before:always}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Encroachment Tracker</h1>
+  <nav>
+    <button data-view="list" class="on">Properties</button>
+    <button data-view="letter">Letter / पत्र</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+  <span id="sync"></span>
+</header>
+
+<main>
+<!-- ================= PROPERTIES ================= -->
+<section id="view-list" class="view on">
+  <div class="bar">
+    <input id="q" class="grow" placeholder="Search name or description">
+    <select id="fRoad"><option value="">All roads</option></select>
+    <select id="fCat"><option value="">All categories</option></select>
+    <select id="fStatus"><option value="">All statuses</option></select>
+    <button id="btnAdd" class="primary">+ Add property</button>
+    <button id="btnBulk">Bulk add names</button>
+    <button id="btnRefresh" title="Reload from the sheet">Refresh</button>
+    <button id="btnCsv">Export CSV</button>
+  </div>
+  <div class="split">
+    <div id="map"></div>
+    <div id="list"></div>
+  </div>
+</section>
+
+<!-- ================= LETTER ================= -->
+<section id="view-letter" class="view">
+  <div class="lettergrid">
+    <div class="panel">
+      <b>1. Pick properties</b>
+      <div class="bar" style="margin:8px 0 0">
+        <select id="lRoad"><option value="">All roads</option></select>
+        <select id="lStatus"><option value="">All statuses</option></select>
+        <button id="lAll">Select visible</button>
+        <button id="lNone">Clear</button>
+      </div>
+      <div id="lSel" class="sel"></div>
+      <div id="lWarn"></div>
+      <b style="display:block;margin-top:12px">2. Letter options</b>
+      <div class="g2">
+        <div><label>Letter type</label>
+          <select id="lType"><option value="complaint">Complaint</option><option value="reminder">Reminder</option></select></div>
+        <div><label>Language</label>
+          <select id="lLang"><option value="both">English + मराठी</option><option value="en">English only</option><option value="mr">मराठी only</option></select></div>
+        <div><label>Letter date</label><input type="date" id="lDate"></div>
+        <div><label>Our reference (optional)</label><input id="lRef" placeholder="e.g. KNP/2026/01"></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;color:var(--ink)"><input type="checkbox" id="lAnnex" checked style="width:auto"> Include annexures with images</label>
+      <div class="row-actions" style="margin-top:12px">
+        <button id="lPrint" class="primary">Print / Save as PDF</button>
+        <button id="lDoc">Download Word (.doc)</button>
+        <button id="lCopy">Copy text</button>
+      </div>
+      <p class="hint">Tip: in the print window choose "Save as PDF" and untick "Headers and footers". The PDF is the most reliable output for Marathi.</p>
+    </div>
+    <div>
+      <div id="letterPreview" class="paper"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section id="view-settings" class="view">
+  <div class="g2">
+    <div class="panel">
+      <b>Connection (shared data)</b>
+      <label>Apps Script web app URL (ends with /exec)</label>
+      <input id="sUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      <label>Team passcode</label>
+      <input id="sPass" type="password" autocomplete="off">
+      <label>Your name (recorded on edits)</label>
+      <input id="sMe">
+      <div class="row-actions" style="margin-top:10px">
+        <button id="sTest">Test connection</button>
+        <button id="sShare">Copy team setup link</button>
+      </div>
+      <p class="hint">With no URL set, the app runs in practice mode and keeps data only in this browser. The team setup link contains the URL and passcode, so share it privately.</p>
+      <div class="row-actions">
+        <button id="sExport">Back up all data (JSON)</button>
+        <button id="sImport">Restore from JSON</button>
+        <input type="file" id="sFile" accept="application/json" hidden>
+      </div>
+    </div>
+    <div class="panel">
+      <b>Letter: sender</b>
+      <div class="g2">
+        <div><label>Name</label><input id="cName"></div>
+        <div><label>Organisation / association (optional)</label><input id="cOrg"></div>
+        <div><label>Phone</label><input id="cPhone"></div>
+        <div><label>Email</label><input id="cEmail"></div>
+      </div>
+      <label>Address</label><textarea id="cAddress"></textarea>
+      <b style="display:block;margin-top:14px">Letter: recipient</b>
+      <p class="hint">Check the officer's name before sending, because postings change.</p>
+      <div class="g2">
+        <div><label>Officer name (English)</label><input id="rName"></div>
+        <div><label>Officer name (मराठी)</label><input id="rNameMr" placeholder="e.g. श्री. ..."></div>
+        <div><label>Ward office (English)</label><input id="rOffice"></div>
+        <div><label>Ward office (मराठी)</label><input id="rOfficeMr"></div>
+      </div>
+      <label>Address (English)</label><textarea id="rAddress"></textarea>
+      <label>Address (मराठी)</label><textarea id="rAddressMr"></textarea>
+      <label>Ward office email (for your own reference)</label><input id="rEmail">
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ================= EDIT DIALOG ================= -->
+<dialog id="dlgEdit">
+  <div class="dhead"><h2 id="eTitle">Add property</h2><button id="eClose">Close</button></div>
+  <div class="dbody">
+    <div class="g2">
+      <div><label>Name (English) *</label><input id="eName"></div>
+      <div><label>Name (मराठी, optional)</label><input id="eNameMr"></div>
+      <div><label>Road</label><select id="eRoad"></select></div>
+      <div><label>Category</label><select id="eCat"></select></div>
+    </div>
+    <div class="g2">
+      <div><label>What is observed (English)</label><textarea id="eDescEn" placeholder="e.g. Front margin used for outdoor seating under a temporary shed"></textarea></div>
+      <div><label>काय आढळले (मराठी)</label><textarea id="eDescMr"></textarea></div>
+    </div>
+    <label>Google Maps link (any link, or paste "lat, lng")</label>
+    <input id="eMaps" placeholder="https://maps.app.goo.gl/... or https://www.google.com/maps/@18.51,73.83,...">
+    <div class="g3">
+      <div><label>Latitude</label><input id="eLat" inputmode="decimal"></div>
+      <div><label>Longitude</label><input id="eLng" inputmode="decimal"></div>
+      <div><label>&nbsp;</label><button id="eResolve" type="button" style="width:100%">Read location from link</button></div>
+    </div>
+    <p id="eMapsMsg" class="hint"></p>
+
+    <b style="display:block;margin-top:10px">Images</b>
+    <div id="eImages"></div>
+    <div class="dropzone" id="eDrop">Paste a screenshot here (Ctrl+V), or
+      <button type="button" id="eAddImg">choose image files</button>
+      <input type="file" id="eFile" accept="image/*" multiple hidden>
+      <div class="hint">Keep the Street View footer in the screenshot. It shows the capture date and the Google credit. Every image needs a date.</div>
+    </div>
+
+    <div class="g3">
+      <div><label>Plan verification</label><select id="eVer"></select></div>
+      <div><label>Status</label><select id="eStatus"></select></div>
+      <div><label>Complaint date</label><input type="date" id="eCDate"></div>
+    </div>
+    <div class="g2">
+      <div><label>PMC complaint / reference number</label><input id="eRef"></div>
+      <div><label>Verification note (RTI reply, plan no., etc.)</label><input id="eVerNote"></div>
+    </div>
+  </div>
+  <div class="dfoot">
+    <button id="eDelete" class="danger" style="margin-right:auto">Delete</button>
+    <button id="eCancel">Cancel</button>
+    <button id="eSave" class="primary">Save</button>
+  </div>
+</dialog>
+
+<!-- ================= VIEW DIALOG ================= -->
+<dialog id="dlgView">
+  <div class="dhead"><h2 id="vTitle"></h2><button id="vClose">Close</button></div>
+  <div class="dbody" id="vBody"></div>
+  <div class="dfoot"><button id="vEdit">Edit</button><button id="vMaps">Open in Google Maps</button></div>
+</dialog>
+
+<!-- ================= BULK DIALOG ================= -->
+<dialog id="dlgBulk">
+  <div class="dhead"><h2>Bulk add names</h2><button id="bClose">Close</button></div>
+  <div class="dbody">
+    <p class="hint">One name per line. Each becomes a draft record that you complete later (location, images, observation).</p>
+    <div class="g3">
+      <div><label>Road</label><select id="bRoad"></select></div>
+      <div><label>Category</label><select id="bCat"></select></div>
+      <div><label>&nbsp;</label><button id="bFill" type="button" style="width:100%">Fill with my first list of 18</button></div>
+    </div>
+    <label>Names</label><textarea id="bNames" style="min-height:240px"></textarea>
+  </div>
+  <div class="dfoot"><button id="bCancel">Cancel</button><button id="bSave" class="primary">Create records</button></div>
+</dialog>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ============================================================
+   Labels (English and Marathi)
+   ============================================================ */
+const ROADS = ['Prabhat Road', 'Bhandarkar Road', 'Other'];
+const ROAD_MR = {'Prabhat Road':'प्रभात रस्ता','Bhandarkar Road':'भांडारकर रस्ता','Other':'इतर','':'-'};
+const CATS = {
+  side_margin :{en:'Side margin',             mr:'बाजूची मोकळी जागा (साईड मार्जिन)'},
+  front_margin:{en:'Front margin',            mr:'पुढील मोकळी जागा (फ्रंट मार्जिन)'},
+  footpath    :{en:'Footpath',                mr:'पदपथ'},
+  road        :{en:'Road space',              mr:'रस्ता'},
+  other       :{en:'Other',                   mr:'इतर'}
+};
+const STATUS = {
+  draft         :{en:'Draft (to verify)',  mr:'मसुदा (पडताळणी बाकी)', color:'#8a94a6'},
+  reported      :{en:'Reported to PMC',    mr:'तक्रार नोंदवली',        color:'#0b5fff'},
+  notice_issued :{en:'Notice issued',      mr:'नोटीस दिली',            color:'#b25e09'},
+  action_taken  :{en:'Action taken',       mr:'कारवाई झाली',           color:'#0a7d4f'},
+  regularised   :{en:'Regularised',        mr:'नियमित केले',           color:'#7a3fd1'},
+  closed        :{en:'Closed',             mr:'बंद',                   color:'#444'}
+};
+const VER = {
+  pending             :{en:'Not yet verified',                      mr:'पडताळणी बाकी'},
+  violation_confirmed :{en:'Verified: not as per sanctioned plan',  mr:'पडताळणी: मंजूर आराखड्याप्रमाणे नाही'},
+  permitted           :{en:'Verified: permitted',                   mr:'पडताळणी: परवानगी आहे'}
+};
+const SRC = {
+  'Google Street View':{en:'Google Street View', mr:'गुगल स्ट्रीट व्ह्यू'},
+  'Own photo'         :{en:'Own photo',          mr:'स्वतःचे छायाचित्र'},
+  'Other'             :{en:'Other source',       mr:'इतर स्रोत'}
+};
+const FIRST_LIST = ['Blend','Murphy','Rustom Rice','Snusha','Pallod',"Glen's Bakehouse",'Irani Bakery','Dehati','Rutuja Bakery','Hotel Swaroop',"Murphies",'Ram Sadan','Bronte Global','Bistro','Vanam','Cafe Black Cat','Cafe Grains and Grills','Ganesh Bhel (opp KNP)'];
+
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mrD = s => String(s).replace(/\d/g, d => '०१२३४५६७८९'[d]);
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const uid = () => Math.random().toString(36).slice(2, 10);
+function toast(msg, ms = 2800) { const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', ms); }
+function fmtDateEN(iso) { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'}); }
+function fmtDateMR(iso) { if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return iso; return mrD(String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear()); }
+function fmtShort(iso) { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-GB', {month:'short', year:'numeric'}); }
+
+/* Parse coordinates from Google Maps links or "lat, lng" text. Returns {lat,lng} or null. */
+function parseCoords(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  let m = s.match(/^(-?\d{1,2}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)$/);
+  if (!m) m = s.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (!m) m = s.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (!m) m = s.match(/[?&](?:q|ll|query|destination)=(-?\d+\.\d+)(?:,|%2C)(-?\d+\.\d+)/i);
+  return m ? {lat: Number(m[1]), lng: Number(m[2])} : null;
+}
+const isShortMapsLink = s => /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl)\//i.test(s || '');
+function mapsUrlFor(p) {
+  if (p.maps_url) return p.maps_url;
+  if (p.lat != null && p.lng != null) return `https://www.google.com/maps?q=${p.lat},${p.lng}`;
+  return '';
+}
+
+/* ============================================================
+   Settings
+   ============================================================ */
+const DEFAULT_SETTINGS = {
+  scriptUrl:'', passcode:'', me:'',
+  cName:'', cOrg:'', cPhone:'', cEmail:'', cAddress:'',
+  rName:'Shri. Balasaheb Dhawale Patil', rNameMr:'',
+  rOffice:'Shivajinagar-Ghole Road Ward Office', rOfficeMr:'शिवाजीनगर-घोले रोड क्षेत्रीय कार्यालय',
+  rAddress:'1187/5, Main Building, Vamanrao Malhar Joshi Marg, near Mangla Theatre / Mayor Bungalow, Sumukh Society, Shivajinagar, Pune 411004',
+  rAddressMr:'११८७/५, मुख्य इमारत, वामनराव मल्हार जोशी मार्ग, शिवाजीनगर, पुणे ४११००४',
+  rEmail:'ro.shivajinagar@punecorporation.org'
+};
+function getS() { try { return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(localStorage.getItem('enc_settings') || '{}')); } catch (e) { return {...DEFAULT_SETTINGS}; } }
+function setS(o) { localStorage.setItem('enc_settings', JSON.stringify(Object.assign(getS(), o))); }
+const SETTING_FIELDS = {sUrl:'scriptUrl', sPass:'passcode', sMe:'me', cName:'cName', cOrg:'cOrg', cPhone:'cPhone', cEmail:'cEmail', cAddress:'cAddress',
+  rName:'rName', rNameMr:'rNameMr', rOffice:'rOffice', rOfficeMr:'rOfficeMr', rAddress:'rAddress', rAddressMr:'rAddressMr', rEmail:'rEmail'};
+function loadSettingsUI() { const s = getS(); for (const [id, k] of Object.entries(SETTING_FIELDS)) $('#' + id).value = s[k] || ''; }
+function bindSettings() {
+  for (const [id, k] of Object.entries(SETTING_FIELDS)) {
+    $('#' + id).addEventListener('change', () => { setS({[k]: $('#' + id).value.trim()}); if (id === 'sUrl' || id === 'sPass') { updateSyncLabel(); loadData(); } else renderLetter(); });
+  }
+  $('#sTest').onclick = async () => {
+    setS({scriptUrl: $('#sUrl').value.trim(), passcode: $('#sPass').value});
+    try { const r = await call('list'); toast('Connected. ' + r.properties.length + ' record(s) in the sheet.'); loadData(); }
+    catch (e) { toast('Failed: ' + e.message, 5000); }
+  };
+  $('#sShare').onclick = async () => {
+    const s = getS(); if (!s.scriptUrl) return toast('Set the web app URL first.');
+    const link = location.href.split('#')[0] + '#setup=' + btoa(unescape(encodeURIComponent(JSON.stringify({u:s.scriptUrl, p:s.passcode}))));
+    try { await navigator.clipboard.writeText(link); toast('Team setup link copied. Share it privately.'); } catch (e) { prompt('Copy this link:', link); }
+  };
+  $('#sExport').onclick = () => download('encroachment-backup-' + todayISO() + '.json', JSON.stringify(state.props, null, 2), 'application/json');
+  $('#sImport').onclick = () => $('#sFile').click();
+  $('#sFile').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try {
+      const arr = JSON.parse(await f.text()); if (!Array.isArray(arr)) throw new Error('Not a backup file');
+      for (const p of arr) await API.save(p);
+      toast('Restored ' + arr.length + ' record(s).'); loadData();
+    } catch (err) { toast('Restore failed: ' + err.message, 5000); }
+    e.target.value = '';
+  };
+}
+function applySetupHash() {
+  const m = location.hash.match(/#setup=(.+)$/);
+  if (!m) return;
+  try { const o = JSON.parse(decodeURIComponent(escape(atob(m[1])))); setS({scriptUrl:o.u, passcode:o.p}); history.replaceState(null, '', location.pathname + location.search); toast('Connected to the team sheet.'); }
+  catch (e) { /* ignore bad hash */ }
+}
+function updateSyncLabel() { $('#sync').textContent = getS().scriptUrl ? 'Shared sheet connected' : 'Practice mode (this browser only)'; }
+
+/* ============================================================
+   Data layer: Apps Script (shared) or localStorage (practice mode)
+   ============================================================ */
+async function call(action, payload = {}) {
+  const s = getS();
+  if (!s.scriptUrl) throw new Error('No web app URL set in Settings.');
+  const res = await fetch(s.scriptUrl, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(Object.assign({action, passcode: s.passcode}, payload))});
+  let j; try { j = await res.json(); } catch (e) { throw new Error('Unexpected reply from the script. Check the deployment settings.'); }
+  if (!j.ok) throw new Error(j.error || 'Request failed');
+  return j;
+}
+const remote = () => !!getS().scriptUrl;
+const localRead = () => { try { return JSON.parse(localStorage.getItem('enc_props') || '[]'); } catch (e) { return []; } };
+const localWrite = a => { try { localStorage.setItem('enc_props', JSON.stringify(a)); } catch (e) { throw new Error('Browser storage is full. Connect the shared sheet to store images.'); } };
+const API = {
+  async list() { return remote() ? (await call('list')).properties : localRead(); },
+  async save(p) {
+    if (remote()) return (await call('save', {property: p})).property;
+    const all = localRead(); const now = new Date().toISOString();
+    if (!p.id) { p.id = uid(); p.created_at = now; p.created_by = getS().me; }
+    p.updated_at = now; const i = all.findIndex(x => x.id === p.id);
+    if (i < 0) all.push(p); else all[i] = p; localWrite(all); return p;
+  },
+  async del(id) { if (remote()) return call('delete', {id}); localWrite(localRead().filter(x => x.id !== id)); },
+  async upload(dataUrl, name) {
+    if (!remote()) return dataUrl;
+    const m = dataUrl.match(/^data:(.+?);base64,(.+)$/);
+    return (await call('upload', {name, mime:m[1], data:m[2]})).url;
+  }
+};
+
+/* ============================================================
+   State and rendering
+   ============================================================ */
+const state = {props: [], editing: null, pending: [], viewing: null, sel: new Set()};
+let map, layer;
+
+async function loadData() {
+  $('#sync').textContent = 'Loading...';
+  try { state.props = await API.list(); updateSyncLabel(); }
+  catch (e) { toast('Could not load: ' + e.message, 5000); updateSyncLabel(); }
+  renderAll();
+}
+function renderAll() { renderList(); renderMap(); renderLetterSel(); renderLetter(); }
+
+function fillSelect(el, items, firstLabel) {
+  el.innerHTML = (firstLabel ? `<option value="">${esc(firstLabel)}</option>` : '') + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+}
+function filtered() {
+  const q = $('#q').value.trim().toLowerCase(), r = $('#fRoad').value, c = $('#fCat').value, s = $('#fStatus').value;
+  return state.props.filter(p =>
+    (!r || p.road === r) && (!c || p.category === c) && (!s || p.status === s) &&
+    (!q || [p.name, p.name_mr, p.desc_en, p.desc_mr, p.pmc_ref].join(' ').toLowerCase().includes(q)));
+}
+function badge(txt, cls = '', style = '') { return `<span class="badge ${cls}" style="${style}">${esc(txt)}</span>`; }
+function statusBadge(p) { const st = STATUS[p.status] || STATUS.draft; return badge(st.en, 'st', `background:${st.color}`); }
+
+function renderList() {
+  const rows = filtered(), el = $('#list');
+  if (!rows.length) { el.innerHTML = `<div class="empty">${state.props.length ? 'No records match these filters.' : 'No properties yet. Use "+ Add property" or "Bulk add names".'}</div>`; return; }
+  el.innerHTML = rows.map(p => {
+    const img = (p.images || [])[0];
+    return `<div class="card" data-id="${esc(p.id)}">
+      ${img ? `<img class="thumb" src="${esc(img.url)}" alt="" loading="lazy">` : `<div class="thumb"></div>`}
+      <div>
+        <h3>${esc(p.name)}${p.name_mr ? ' <span class="hint">/ ' + esc(p.name_mr) + '</span>' : ''}</h3>
+        <div>${statusBadge(p)}${badge(p.road || 'Road not set')}${badge((CATS[p.category] || CATS.other).en)}${(p.images||[]).length ? badge((p.images.length) + ' image(s)') : badge('no image')}</div>
+        <div class="hint">${esc(p.desc_en || '')}</div>
+        <div class="row-actions">
+          <button data-act="view">View</button><button data-act="edit">Edit</button>
+          ${mapsUrlFor(p) ? `<button data-act="maps">Maps</button>` : ''}
+        </div>
+      </div></div>`;
+  }).join('');
+}
+$('#list').addEventListener('click', e => {
+  const card = e.target.closest('.card'); if (!card) return;
+  const p = state.props.find(x => x.id === card.dataset.id); if (!p) return;
+  const act = e.target.dataset.act;
+  if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank');
+  else { openView(p); if (map && p.lat != null) map.setView([p.lat, p.lng], 18); }
+});
+
+function renderMap() {
+  if (!window.L) return;
+  if (!map) {
+    map = L.map('map').setView([18.5175, 73.8385], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    layer = L.layerGroup().addTo(map);
+  }
+  layer.clearLayers();
+  const pts = [];
+  filtered().forEach(p => {
+    if (p.lat == null || p.lng == null || isNaN(p.lat)) return;
+    const st = STATUS[p.status] || STATUS.draft;
+    const m = L.circleMarker([p.lat, p.lng], {radius:9, color:'#fff', weight:2, fillColor:st.color, fillOpacity:.95}).addTo(layer);
+    m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br><button onclick="openViewById('${esc(p.id)}')">Details</button>`);
+    pts.push([p.lat, p.lng]);
+  });
+  if (pts.length && !renderMap.fitted) { map.fitBounds(pts, {padding:[30,30], maxZoom:17}); renderMap.fitted = true; }
+}
+window.openViewById = id => { const p = state.props.find(x => x.id === id); if (p) openView(p); };
+
+/* ============================================================
+   View dialog
+   ============================================================ */
+function openView(p) {
+  state.viewing = p;
+  $('#vTitle').textContent = p.name + (p.name_mr ? ' / ' + p.name_mr : '');
+  const imgs = (p.images || []).map(i => `<figure><a href="${esc(i.url)}" target="_blank"><img src="${esc(i.url)}" alt=""></a><figcaption>${esc(i.source || '')}, ${esc(i.date || 'date missing')}${i.caption ? '<br>' + esc(i.caption) : ''}</figcaption></figure>`).join('');
+  const hist = (p.history || []).slice().reverse().map(h => `<li>${esc(h)}</li>`).join('');
+  $('#vBody').innerHTML = `
+    <div class="kv">
+      <div>Status</div><div>${statusBadge(p)}</div>
+      <div>Road</div><div>${esc(p.road || 'Not set')}</div>
+      <div>Category</div><div>${esc((CATS[p.category] || CATS.other).en)}</div>
+      <div>Observed</div><div>${esc(p.desc_en || '-')}<br><span class="hint">${esc(p.desc_mr || '')}</span></div>
+      <div>Plan verification</div><div>${esc((VER[p.verification] || VER.pending).en)}${p.verification_note ? '<br><span class="hint">' + esc(p.verification_note) + '</span>' : ''}</div>
+      <div>Complaint</div><div>${p.complaint_date ? esc(fmtDateEN(p.complaint_date)) : '-'}${p.pmc_ref ? ' (Ref: ' + esc(p.pmc_ref) + ')' : ''}</div>
+      <div>Location</div><div>${p.lat != null ? esc(p.lat + ', ' + p.lng) : '-'}</div>
+      <div>Last update</div><div>${esc(p.updated_by || '')} ${esc((p.updated_at || '').slice(0, 10))}</div>
+    </div>
+    <div class="gallery">${imgs || '<span class="hint">No images yet.</span>'}</div>
+    ${hist ? `<b>History</b><ul class="hint">${hist}</ul>` : ''}`;
+  $('#vMaps').style.display = mapsUrlFor(p) ? '' : 'none';
+  $('#dlgView').showModal();
+}
+$('#vClose').onclick = () => $('#dlgView').close();
+$('#vEdit').onclick = () => { $('#dlgView').close(); openEdit(state.viewing); };
+$('#vMaps').onclick = () => window.open(mapsUrlFor(state.viewing), '_blank');
+
+/* ============================================================
+   Edit dialog
+   ============================================================ */
+function openEdit(p) {
+  state.editing = p ? JSON.parse(JSON.stringify(p)) : {id:'', name:'', road:'', category:'front_margin', status:'draft', verification:'pending', images:[], history:[]};
+  const e = state.editing;
+  $('#eTitle').textContent = p ? 'Edit property' : 'Add property';
+  $('#eName').value = e.name || ''; $('#eNameMr').value = e.name_mr || '';
+  $('#eRoad').value = e.road || ''; $('#eCat').value = e.category || 'front_margin';
+  $('#eDescEn').value = e.desc_en || ''; $('#eDescMr').value = e.desc_mr || '';
+  $('#eMaps').value = e.maps_url || ''; $('#eLat').value = e.lat ?? ''; $('#eLng').value = e.lng ?? '';
+  $('#eVer').value = e.verification || 'pending'; $('#eStatus').value = e.status || 'draft';
+  $('#eCDate').value = (e.complaint_date || '').slice(0, 10); $('#eRef').value = e.pmc_ref || ''; $('#eVerNote').value = e.verification_note || '';
+  $('#eMapsMsg').textContent = '';
+  state.pending = (e.images || []).map(i => Object.assign({existing:true, key:uid()}, i));
+  renderImgRows();
+  $('#eDelete').style.display = p ? '' : 'none';
+  $('#dlgEdit').showModal();
+}
+function renderImgRows() {
+  $('#eImages').innerHTML = state.pending.map((im, i) => `
+    <div class="imgrow" data-i="${i}">
+      <img src="${esc(im.url || im.dataUrl)}" alt="">
+      <div>
+        <div class="g3">
+          <div><label>Image date *</label><input type="date" data-f="date" value="${esc(im.date || '')}"></div>
+          <div><label>Source</label><select data-f="source">${Object.keys(SRC).map(k => `<option ${im.source === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+          <div><label>&nbsp;</label><button type="button" data-f="rm" class="danger" style="width:100%">Remove</button></div>
+        </div>
+        <label>Caption</label><input data-f="caption" value="${esc(im.caption || '')}" placeholder="e.g. Seating on front margin, facing north">
+      </div>
+    </div>`).join('');
+}
+$('#eImages').addEventListener('input', e => { const row = e.target.closest('.imgrow'); if (!row || !e.target.dataset.f || e.target.dataset.f === 'rm') return; state.pending[+row.dataset.i][e.target.dataset.f] = e.target.value; });
+$('#eImages').addEventListener('click', e => { if (e.target.dataset.f === 'rm') { state.pending.splice(+e.target.closest('.imgrow').dataset.i, 1); renderImgRows(); } });
+
+function resizeImage(blob, max = 1400) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const sc = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url); res(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => rej(new Error('Could not read the image')); img.src = url;
+  });
+}
+async function addImageBlob(blob) {
+  try { const dataUrl = await resizeImage(blob); state.pending.push({existing:false, key:uid(), dataUrl, date:'', source:'Google Street View', caption:''}); renderImgRows(); }
+  catch (e) { toast(e.message); }
+}
+$('#eAddImg').onclick = () => $('#eFile').click();
+$('#eFile').onchange = async e => { for (const f of e.target.files) await addImageBlob(f); e.target.value = ''; };
+$('#dlgEdit').addEventListener('paste', async e => {
+  const items = [...(e.clipboardData?.items || [])].filter(i => i.type.startsWith('image/'));
+  if (!items.length) return; e.preventDefault(); for (const it of items) await addImageBlob(it.getAsFile());
+});
+
+async function applyMapsInput() {
+  const v = $('#eMaps').value.trim(); if (!v) return;
+  const c = parseCoords(v);
+  if (c) { $('#eLat').value = c.lat; $('#eLng').value = c.lng; $('#eMapsMsg').textContent = 'Location read from the link.'; if (!/^https?:/i.test(v)) $('#eMaps').value = `https://www.google.com/maps?q=${c.lat},${c.lng}`; return; }
+  if (isShortMapsLink(v)) {
+    if (!remote()) { $('#eMapsMsg').textContent = 'Short links need the shared sheet connected. Open the link, copy the full address from the browser, or type latitude and longitude.'; return; }
+    $('#eMapsMsg').textContent = 'Resolving short link...';
+    try { const r = await call('resolve', {url: v}); if (r.lat != null) { $('#eLat').value = r.lat; $('#eLng').value = r.lng; $('#eMapsMsg').textContent = 'Location read from the short link.'; } else $('#eMapsMsg').textContent = 'The link has no coordinates. In Google Maps, right-click the spot and copy the numbers.'; }
+    catch (e) { $('#eMapsMsg').textContent = 'Could not resolve: ' + e.message; }
+  } else $('#eMapsMsg').textContent = 'No coordinates found in this link. Right-click the spot in Google Maps and paste the numbers here.';
+}
+$('#eMaps').addEventListener('change', applyMapsInput);
+$('#eResolve').onclick = applyMapsInput;
+
+async function saveEdit() {
+  const e = state.editing, name = $('#eName').value.trim();
+  if (!name) return toast('Name is required.');
+  if (state.pending.some(i => !i.date)) return toast('Every image needs a date (see the Street View footer).', 4500);
+  const btn = $('#eSave'); btn.disabled = true; btn.textContent = 'Saving...';
+  try {
+    const images = [];
+    for (const im of state.pending) {
+      let url = im.url;
+      if (!im.existing) url = await API.upload(im.dataUrl, (name.replace(/\W+/g, '-') + '-' + Date.now() + '.jpg'));
+      images.push({url, date: im.date, source: im.source || 'Other', caption: im.caption || ''});
+    }
+    const lat = parseFloat($('#eLat').value), lng = parseFloat($('#eLng').value);
+    const next = Object.assign({}, e, {
+      name, name_mr: $('#eNameMr').value.trim(), road: $('#eRoad').value, category: $('#eCat').value,
+      desc_en: $('#eDescEn').value.trim(), desc_mr: $('#eDescMr').value.trim(), maps_url: $('#eMaps').value.trim(),
+      lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, images,
+      verification: $('#eVer').value, status: $('#eStatus').value, complaint_date: $('#eCDate').value, pmc_ref: $('#eRef').value.trim(),
+      verification_note: $('#eVerNote').value.trim(), updated_by: getS().me
+    });
+    const hist = (e.history || []).slice(), who = getS().me || 'someone', day = todayISO();
+    if (!e.id) hist.push(`${day}: created by ${who}`);
+    else {
+      if (e.status !== next.status) hist.push(`${day}: status ${(STATUS[e.status] || STATUS.draft).en} to ${STATUS[next.status].en} (${who})`);
+      if (e.verification !== next.verification) hist.push(`${day}: verification set to "${VER[next.verification].en}" (${who})`);
+    }
+    next.history = hist;
+    const saved = await API.save(next);
+    const i = state.props.findIndex(x => x.id === saved.id);
+    if (i < 0) state.props.push(saved); else state.props[i] = saved;
+    $('#dlgEdit').close(); renderAll(); toast('Saved.');
+  } catch (err) { toast('Save failed: ' + err.message, 6000); }
+  btn.disabled = false; btn.textContent = 'Save';
+}
+$('#eSave').onclick = saveEdit;
+$('#eCancel').onclick = $('#eClose').onclick = () => $('#dlgEdit').close();
+$('#eDelete').onclick = async () => {
+  if (!confirm('Delete this property permanently? (Images stay in the Drive folder.)')) return;
+  try { await API.del(state.editing.id); state.props = state.props.filter(x => x.id !== state.editing.id); $('#dlgEdit').close(); renderAll(); toast('Deleted.'); }
+  catch (e) { toast('Delete failed: ' + e.message); }
+};
+
+/* Bulk add */
+$('#btnBulk').onclick = () => { $('#bNames').value = ''; $('#dlgBulk').showModal(); };
+$('#bFill').onclick = () => { $('#bNames').value = FIRST_LIST.join('\n'); };
+$('#bCancel').onclick = $('#bClose').onclick = () => $('#dlgBulk').close();
+$('#bSave').onclick = async () => {
+  const names = $('#bNames').value.split('\n').map(s => s.trim()).filter(Boolean);
+  if (!names.length) return toast('Add at least one name.');
+  const btn = $('#bSave'); btn.disabled = true;
+  try {
+    for (const name of names) {
+      const cat = /\bopp\b|footpath|stall|bhel|cart/i.test(name) ? 'footpath' : $('#bCat').value;
+      const p = await API.save({id:'', name, road: $('#bRoad').value, category: cat, status:'draft', verification:'pending', images:[], history:[todayISO() + ': created in bulk by ' + (getS().me || 'someone')], updated_by: getS().me});
+      state.props.push(p);
+    }
+    $('#dlgBulk').close(); renderAll(); toast(names.length + ' record(s) created. Open each one to add location, images and notes.', 5000);
+  } catch (e) { toast('Bulk add failed: ' + e.message, 6000); }
+  btn.disabled = false;
+};
+
+/* CSV export */
+function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function download(name, content, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], {type})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+$('#btnCsv').onclick = () => {
+  const cols = ['name','name_mr','road','category','desc_en','desc_mr','lat','lng','maps_url','verification','verification_note','status','complaint_date','pmc_ref','updated_by','updated_at'];
+  const lines = [cols.concat(['images']).join(',')].concat(state.props.map(p => cols.map(c => csvCell(p[c])).concat(csvCell((p.images || []).map(i => `${i.source} ${i.date} ${i.url}`).join(' | '))).join(',')));
+  download('encroachments-' + todayISO() + '.csv', '﻿' + lines.join('\n'), 'text/csv;charset=utf-8');
+};
+
+/* ============================================================
+   Letter builder (English and Marathi)
+   ============================================================ */
+function issues(p) {
+  const out = [];
+  if (!p.road) out.push('road not set');
+  if (!p.desc_en) out.push('no observation text');
+  if (!(p.images || []).length) out.push('no image');
+  else if ((p.images || []).some(i => !i.date)) out.push('image date missing');
+  if (p.lat == null) out.push('no location');
+  if ((p.verification || 'pending') === 'pending') out.push('plan not verified');
+  return out;
+}
+function renderLetterSel() {
+  const road = $('#lRoad').value, st = $('#lStatus').value;
+  const rows = state.props.filter(p => (!road || p.road === road) && (!st || p.status === st));
+  $('#lSel').innerHTML = rows.length ? rows.map(p => {
+    const iss = issues(p);
+    return `<label><input type="checkbox" data-id="${esc(p.id)}" ${state.sel.has(p.id) ? 'checked' : ''}><span>${esc(p.name)} <span class="hint">(${esc(p.road || 'no road')})</span>${p.verification === 'permitted' ? '<br><span class="issue">marked permitted, will be left out</span>' : (iss.length ? `<br><span class="issue">${esc(iss.join(', '))}</span>` : '')}</span></label>`;
+  }).join('') : '<div class="empty" style="margin:8px">No properties.</div>';
+}
+$('#lSel').addEventListener('change', e => { const id = e.target.dataset.id; if (!id) return; e.target.checked ? state.sel.add(id) : state.sel.delete(id); renderLetter(); });
+$('#lAll').onclick = () => { $$('#lSel input').forEach(i => { i.checked = true; state.sel.add(i.dataset.id); }); renderLetter(); };
+$('#lNone').onclick = () => { state.sel.clear(); $$('#lSel input').forEach(i => i.checked = false); renderLetter(); };
+['lRoad', 'lStatus'].forEach(id => $('#' + id).addEventListener('change', renderLetterSel));
+['lType', 'lLang', 'lDate', 'lRef', 'lAnnex'].forEach(id => $('#' + id).addEventListener('change', renderLetter));
+
+function rowsFor(props, lang, type) {
+  return props.map((p, i) => {
+    const imgs = (p.images || []);
+    const imgTxt = imgs.length ? imgs.map(im => (lang === 'mr' ? (SRC[im.source] || SRC.Other).mr + ', ' + fmtDateMR(im.date) : (SRC[im.source] || SRC.Other).en + ', ' + fmtShort(im.date))).join('; ') : '-';
+    const name = lang === 'mr' ? (p.name_mr || p.name) : p.name;
+    const obs = lang === 'mr' ? (p.desc_mr || (CATS[p.category] || CATS.other).mr) : (p.desc_en || (CATS[p.category] || CATS.other).en);
+    const road = lang === 'mr' ? ROAD_MR[p.road || ''] : (p.road || '-');
+    const ver = (VER[p.verification] || VER.pending)[lang];
+    const ref = type === 'reminder' ? (lang === 'mr' ? mrD(p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateMR(p.complaint_date) : '') : (p.pmc_ref || '-') + (p.complaint_date ? ' / ' + fmtDateEN(p.complaint_date) : '')) : null;
+    const n = lang === 'mr' ? mrD(i + 1) : (i + 1);
+    return `<tr><td>${n}</td><td>${esc(name)}</td><td>${esc(road)}</td><td>${esc(obs)}</td><td>${esc(imgTxt)}</td><td>${esc(ver)}</td>${ref !== null ? `<td>${esc(ref)}</td>` : ''}</tr>`;
+  }).join('');
+}
+function senderBlock(s, lang) {
+  const lines = [s.cName, s.cOrg, s.cAddress, s.cPhone && ((lang === 'mr' ? 'दूरध्वनी: ' : 'Phone: ') + s.cPhone), s.cEmail && ('Email: ' + s.cEmail)].filter(Boolean);
+  return lines.map(esc).join('<br>');
+}
+function earliestComplaint(props) { return props.map(p => p.complaint_date).filter(Boolean).sort()[0] || ''; }
+function refsOf(props) { return [...new Set(props.map(p => p.pmc_ref).filter(Boolean))].join(', '); }
+
+function letterEN(c) {
+  const {props, s, type, date, ref} = c, n = props.length;
+  const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
+  const roadTxt = roads.length ? roads.join(' and ') : 'the area';
+  const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>Plan check</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
+  const to = ['The Assistant Municipal Commissioner', esc(s.rName), esc(s.rOffice), 'Pune Municipal Corporation', esc(s.rAddress)].filter(x => x);
+  const subj = type === 'reminder'
+    ? `Reminder: action on our complaint dated ${esc(fmtDateEN(earliestComplaint(props)) || '____')}${refsOf(props) ? ' (Ref: ' + esc(refsOf(props)) + ')' : ''} regarding alleged encroachments on ${esc(roadTxt)}`
+    : `Request for inspection and action on alleged encroachment of margins, footpaths and road space along ${esc(roadTxt)}`;
+  const intro = type === 'reminder'
+    ? `<p>We submitted a complaint on ${esc(fmtDateEN(earliestComplaint(props)) || '____')} about the ${n} location(s) listed below. We have not yet received information on the action taken.</p>`
+    : `<p>I write to bring to your attention the alleged unauthorised use of side and front margins (open spaces), footpaths and road space at the ${n} location(s) listed below on ${esc(roadTxt)}. Details are in the table, and photographs with their capture dates are attached as annexures.</p>
+       <p>The photographs are from Google Street View or from our own site visits and show the position on the date stated. They do not by themselves establish whether a structure or use is sanctioned. We therefore request that your office inspect each location and verify it against the sanctioned plan, occupancy certificate and any permission on record.</p>`;
+  const asks = type === 'reminder'
+    ? `<li>Please inform us of the status of action at each location within 7 days.</li><li>If action is pending, please state the reason and the expected timeline.</li><li>Please include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>`
+    : `<li>Inspect the listed locations and verify them against the sanctioned plans and permissions.</li>
+       <li>Where unauthorised construction, use of margin space or encroachment is found, issue notices and take action under the applicable provisions of law and regulations (including the Maharashtra Regional and Town Planning Act, 1966 and the UDCPR, as applicable).</li>
+       <li>Include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>
+       <li>Inform us of the action taken, with a complaint reference number, within 15 days.</li>`;
+  return `<div class="lang-en">
+    <div class="addr">${senderBlock(s, 'en')}</div>
+    <p>Date: ${esc(fmtDateEN(date))}${ref ? '<br>Ref: ' + esc(ref) : ''}</p>
+    <p class="addr"><b>To,</b><br>${to.join('<br>')}</p>
+    <p><b>Subject: ${subj}</b></p>
+    <p>Respected Sir / Madam,</p>
+    ${intro}
+    <table><thead><tr>${hdr}</tr></thead><tbody>${rowsFor(props, 'en', type)}</tbody></table>
+    <p>We request you to:</p><ol>${asks}</ol>
+    <p>Thank you for your attention.</p>
+    <p>Yours faithfully,<br><br>${esc(s.cName || '')}${s.cOrg ? '<br>' + esc(s.cOrg) : ''}</p>
+    ${c.annex ? `<p>Enclosures: Annexures 1 to ${n}</p>` : ''}
+  </div>`;
+}
+function letterMR(c) {
+  const {props, s, type, date, ref} = c, n = props.length, N = mrD(n);
+  const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
+  const roadTxt = roads.length ? roads.map(r => ROAD_MR[r]).join(' व ') : 'परिसर';
+  const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>आराखडा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
+  const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
+  const subj = type === 'reminder'
+    ? `स्मरणपत्र: दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजीच्या तक्रारीवर${refsOf(props) ? ' (संदर्भ: ' + esc(mrD(refsOf(props))) + ')' : ''} कार्यवाही करणेबाबत (${esc(roadTxt)})`
+    : `${esc(roadTxt)} परिसरातील मोकळ्या जागा (मार्जिन), पदपथ व रस्त्यावरील कथित अतिक्रमणांची पाहणी करून कारवाई करणेबाबत`;
+  const intro = type === 'reminder'
+    ? `<p>यापूर्वी दिनांक ${esc(fmtDateMR(earliestComplaint(props)) || '____')} रोजी खालील ${N} ठिकाणांबाबत तक्रार सादर केली होती. त्यावर केलेल्या कार्यवाहीची माहिती अद्याप प्राप्त झालेली नाही.</p>`
+    : `<p>आपले लक्ष ${esc(roadTxt)} परिसरातील खालील ${N} ठिकाणी बाजूच्या व पुढील मोकळ्या जागांच्या (साईड/फ्रंट मार्जिन), पदपथांच्या व रस्त्याच्या कथित नियमबाह्य वापराकडे वेधण्यासाठी हे निवेदन सादर करत आहे. सविस्तर माहिती खालील तक्त्यात असून छायाचित्रे त्यांच्या दिनांकासह परिशिष्टांमध्ये जोडली आहेत.</p>
+       <p>ही छायाचित्रे गुगल स्ट्रीट व्ह्यू किंवा आमच्या प्रत्यक्ष पाहणीतून घेतलेली असून नमूद दिनांकाची स्थिती दर्शवतात. त्यावरून एखादे बांधकाम किंवा वापर मंजूर आहे की नाही हे सिद्ध होत नाही. त्यामुळे कृपया प्रत्येक ठिकाणाची प्रत्यक्ष पाहणी करून मंजूर आराखडे, भोगवटा प्रमाणपत्र व इतर परवानग्यांशी पडताळणी करावी, ही विनंती.</p>`;
+  const asks = type === 'reminder'
+    ? `<li>प्रत्येक ठिकाणी झालेल्या कार्यवाहीची स्थिती ७ दिवसांत कळवावी.</li><li>कार्यवाही प्रलंबित असल्यास त्याचे कारण व अपेक्षित कालमर्यादा नमूद करावी.</li><li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>`
+    : `<li>वरील ठिकाणांची प्रत्यक्ष पाहणी करून मंजूर आराखडे व परवानग्यांशी पडताळणी करावी.</li>
+       <li>अनधिकृत बांधकाम, मोकळ्या जागेचा नियमबाह्य वापर किंवा अतिक्रमण आढळल्यास लागू कायदेशीर तरतुदी व नियमावलीनुसार (महाराष्ट्र प्रादेशिक व नगररचना अधिनियम, १९६६ व UDCPR यांसह, जसे लागू असेल तसे) नोटीस देऊन कारवाई करावी.</li>
+       <li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>
+       <li>केलेल्या कार्यवाहीची माहिती व तक्रार क्रमांक १५ दिवसांत कळवावा.</li>`;
+  return `<div class="lang-mr">
+    <div class="addr">${senderBlock(s, 'mr')}</div>
+    <p>दिनांक: ${esc(fmtDateMR(date))}${ref ? '<br>संदर्भ: ' + esc(mrD(ref)) : ''}</p>
+    <p class="addr">${to.join('<br>')}</p>
+    <p><b>विषय: ${subj}.</b></p>
+    <p>माननीय महोदय / महोदया,</p>
+    ${intro}
+    <table><thead><tr>${hdr}</tr></thead><tbody>${rowsFor(props, 'mr', type)}</tbody></table>
+    <p>आपणास विनंती आहे की:</p><ol>${asks}</ol>
+    <p>कळावे. आपले सहकार्य अपेक्षित आहे. धन्यवाद.</p>
+    <p>विनीत,<br><br>${esc(s.cName || '')}${s.cOrg ? '<br>' + esc(s.cOrg) : ''}</p>
+    ${c.annex ? `<p>सोबत: परिशिष्ट १ ते ${N}</p>` : ''}
+  </div>`;
+}
+function annexHTML(c) {
+  return c.props.map((p, i) => {
+    const maps = mapsUrlFor(p);
+    const figs = (p.images || []).map(im => {
+      const src = im.source || 'Other', s = SRC[src] || SRC.Other;
+      const credit = /google/i.test(src) ? ' © Google. Shown only to identify the location. / © गुगल. केवळ ठिकाण ओळखण्यासाठी.' : '';
+      return `<figure><img src="${esc(im.url)}" alt=""><figcaption>${esc(s.en)} / ${esc(s.mr)}, ${esc(fmtDateEN(im.date) || 'date missing')} / ${esc(fmtDateMR(im.date))}${im.caption ? '. ' + esc(im.caption) : ''}.${credit}</figcaption></figure>`;
+    }).join('');
+    return `<div class="pb"><h4>Annexure ${i + 1} / परिशिष्ट ${mrD(i + 1)}: ${esc(p.name)}${p.name_mr ? ' / ' + esc(p.name_mr) : ''} (${esc(p.road || '-')} / ${esc(ROAD_MR[p.road || ''])})</h4>
+      <div>${esc((CATS[p.category] || CATS.other).en)} / ${esc((CATS[p.category] || CATS.other).mr)}</div>
+      ${p.lat != null ? `<div>Location / स्थान: ${esc(p.lat)}, ${esc(p.lng)}${maps ? ' (' + esc(maps) + ')' : ''}</div>` : (maps ? `<div>Location / स्थान: ${esc(maps)}</div>` : '')}
+      ${figs || '<p><i>No image attached. / छायाचित्र जोडलेले नाही.</i></p>'}</div>`;
+  }).join('');
+}
+function currentLetterContext() {
+  const props = state.props.filter(p => state.sel.has(p.id) && p.verification !== 'permitted');
+  return {props, s: getS(), type: $('#lType').value, lang: $('#lLang').value, date: $('#lDate').value || todayISO(), ref: $('#lRef').value.trim(), annex: $('#lAnnex').checked};
+}
+function buildLetterHTML(c) {
+  let h = '';
+  if (c.lang === 'en' || c.lang === 'both') h += letterEN(c);
+  if (c.lang === 'mr' || c.lang === 'both') h += (h ? '<div class="pb"></div>' : '') + letterMR(c);
+  if (c.annex) h += annexHTML(c);
+  return h;
+}
+function renderLetter() {
+  const c = currentLetterContext(), box = $('#letterPreview'), warn = $('#lWarn');
+  if (!c.props.length) { box.innerHTML = '<p class="hint">Select one or more properties on the left to preview the letter.</p>'; warn.innerHTML = ''; return; }
+  const missing = [];
+  if (!c.s.cName) missing.push('your name and address (Settings)');
+  const noImg = c.props.filter(p => !(p.images || []).length).length; if (noImg) missing.push(noImg + ' selected property(ies) without images');
+  const unv = c.props.filter(p => (p.verification || 'pending') === 'pending').length; if (unv) missing.push(unv + ' not yet verified against the sanctioned plan');
+  warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. The letter asks PMC to verify, so unverified items are fine, but check your facts.</div>` : '';
+  box.innerHTML = buildLetterHTML(c);
+}
+$('#lPrint').onclick = () => { if (!currentLetterContext().props.length) return toast('Select at least one property.'); window.print(); };
+$('#lCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#letterPreview').innerText); toast('Letter text copied.'); } catch (e) { toast('Copy failed.'); } };
+$('#lDoc').onclick = async () => {
+  if (!currentLetterContext().props.length) return toast('Select at least one property.');
+  toast('Preparing Word file...', 6000);
+  const tmp = document.createElement('div'); tmp.innerHTML = $('#letterPreview').innerHTML;
+  for (const img of tmp.querySelectorAll('img')) {
+    try { const b = await (await fetch(img.src)).blob(); img.src = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(b); }); img.style.maxWidth = '15cm'; } catch (e) { /* keep link */ }
+  }
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:'Nirmala UI','Mangal',Arial;font-size:11pt}table{border-collapse:collapse;width:100%}td,th{border:1px solid #777;padding:3px 5px;font-size:9.5pt;vertical-align:top}.pb{page-break-before:always}img{max-width:15cm}</style></head><body>${tmp.innerHTML}</body></html>`;
+  download('PMC-letter-' + todayISO() + '.doc', '﻿' + html, 'application/msword');
+};
+
+/* ============================================================
+   Init
+   ============================================================ */
+function init() {
+  applySetupHash();
+  fillSelect($('#fRoad'), ROADS.map(r => [r, r]), 'All roads');
+  fillSelect($('#fCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]), 'All categories');
+  fillSelect($('#fStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
+  fillSelect($('#lRoad'), ROADS.map(r => [r, r]), 'All roads');
+  fillSelect($('#lStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]), 'All statuses');
+  fillSelect($('#eRoad'), [['', 'Not set']].concat(ROADS.map(r => [r, r])));
+  fillSelect($('#bRoad'), [['', 'Not set (set later)']].concat(ROADS.map(r => [r, r])));
+  fillSelect($('#eCat'), Object.entries(CATS).map(([k, v]) => [k, v.en]));
+  fillSelect($('#bCat'), Object.entries(CATS).map(([k, v]) => [k, v.en])); $('#bCat').value = 'front_margin';
+  fillSelect($('#eVer'), Object.entries(VER).map(([k, v]) => [k, v.en]));
+  fillSelect($('#eStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]));
+  $('#lDate').value = todayISO();
+  ['q', 'fRoad', 'fCat', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { renderList(); renderMap(); }));
+  $('#btnAdd').onclick = () => openEdit(null);
+  $('#btnRefresh').onclick = loadData;
+  $$('nav button').forEach(b => b.onclick = () => {
+    $$('nav button').forEach(x => x.classList.toggle('on', x === b));
+    $$('.view').forEach(v => v.classList.toggle('on', v.id === 'view-' + b.dataset.view));
+    if (b.dataset.view === 'list' && map) setTimeout(() => map.invalidateSize(), 50);
+    if (b.dataset.view === 'letter') { renderLetterSel(); renderLetter(); }
+  });
+  loadSettingsUI(); bindSettings(); updateSyncLabel();
+  window.addEventListener('focus', () => { if (remote() && !$('#dlgEdit').open) loadData(); });
+  loadData();
+}
+if (typeof document !== 'undefined' && document.getElementById('view-list')) init();
+</script>
+</body>
+</html>
