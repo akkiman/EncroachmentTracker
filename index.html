@@ -252,7 +252,7 @@ header{margin-bottom:10px}
       <p class="lp-mr">पदपथ चालण्यासाठी आहेत.</p>
       <p class="lead">Footpath Watch helps Pune residents photograph encroachments, pin them on a map and send PMC a clear letter in English and Marathi. It then keeps track of what has been answered and what has not.</p>
       <div class="lp-cta"><button class="lp-btn" id="lpLogin2">Member login</button><a class="lp-btn ghost" href="#how">See how it works</a></div>
-      <p class="lp-fine">Run by citizens of the DGPC group. This is not a government service and it is not connected to PMC.</p>
+      <p class="lp-fine">A Citizens of Pune project. This is not a government service and it is not connected to PMC.</p>
     </div>
     <div>
       <div class="ba" id="ba" style="--p:50%">
@@ -317,8 +317,8 @@ header{margin-bottom:10px}
 
   <section class="lp-sec lp-dark" id="roads"><div class="lp-wrap">
     <h2>Where we are watching.</h2>
-    <p class="sub">We started around the DGPC neighbourhood. New roads are added when members ask.</p>
-    <div class="plates"><div class="plate"><b>Prabhat Road</b><span>प्रभात रोड</span></div><div class="plate"><b>Bhandarkar Road</b><span>भांडारकर रोड</span></div><div class="plate more"><b>Your road?</b><span>Ask a group admin</span></div></div>
+    <p class="sub">We started around Deccan Gymkhana. New roads are added when members ask.</p>
+    <div class="plates"><div class="plate"><b>Prabhat Road</b><span>प्रभात रोड</span></div><div class="plate"><b>Bhandarkar Road</b><span>भांडारकर रोड</span></div><div class="plate more"><b>Your road?</b><span>Ask a project admin</span></div></div>
   </div></section>
 
   <section class="lp-band" id="joinband"><div class="lp-wrap">
@@ -330,11 +330,11 @@ header{margin-bottom:10px}
   <section class="lp-sec" id="faq"><div class="lp-wrap">
     <h2>Questions.</h2>
     <div class="lp-faq">
-      <details><summary>Who can use it?</summary><p>Approved members of the group. Request access and an admin will review it. Logging in uses a code sent to your email, so there is no password to remember.</p></details>
+      <details><summary>Who can use it?</summary><p>Approved members of the project. Request access and an admin will review it. Logging in uses a code sent to your email, so there is no password to remember.</p></details>
       <details><summary>Is this an official PMC service?</summary><p>No. It is a citizens' tool. Letters are addressed to PMC and you send them yourself. Whether something is an encroachment is for PMC to decide.</p></details>
       <details><summary>Do I need a PMC portal account?</summary><p>No. The portal helper is optional. If you have an account, it copies the details you need and tracks the complaint number for you.</p></details>
       <details><summary>What happens to my photos?</summary><p>They are stored in a private Google Drive folder and are visible only to approved members. When you add a photo, it is also sent to an AI service to suggest a description. You can ask an admin to remove a photo at any time.</p></details>
-      <details><summary>Does it cost anything?</summary><p>It is free for members. The group admin pays for the AI and hosting, which is why each member has a daily limit on photo analysis.</p></details>
+      <details><summary>Does it cost anything?</summary><p>It is free for members. A project admin pays for the AI and hosting, which is why each member has a daily limit on photo analysis.</p></details>
     </div>
   </div></section>
 
@@ -1920,19 +1920,18 @@ let agId = '', MEMBERS = [];
 
 /* ---------- Help, About, branding ---------- */
 const APP_VERSION = 'v1.0 (21 Nov 2026)';
-const CONTACT_EMAIL = ''; // put a group contact email here, for example 'footpathwatch@example.org'. Leave empty to say "ask an admin".
-const contactLine = () => CONTACT_EMAIL ? `<a href="mailto:${esc(CONTACT_EMAIL)}?subject=Footpath%20Watch%20help">${esc(CONTACT_EMAIL)}</a>` : 'any admin of the DGPC group';
+const contactLine = () => 'a project admin (ask the person who invited you)';
 function aboutHtml() {
   return `
   <h2 style="margin-top:0">What this is</h2>
-  <p>Footpath Watch is a free tool run by citizens of the DGPC group. Members photograph alleged encroachments on footpaths, road margins and flex banners, record them with a location, and generate clear letters to the PMC Shivajinagar-Ghole Road Ward Office in English and Marathi. It also reminds us to follow up so complaints do not get forgotten.</p>
+  <p>Footpath Watch is a free tool run by the Citizens of Pune project. Members photograph alleged encroachments on footpaths, road margins and flex banners, record them with a location, and generate clear letters to the PMC Shivajinagar-Ghole Road Ward Office in English and Marathi. It also reminds us to follow up so complaints do not get forgotten.</p>
   <p>It currently covers Prabhat Road and Bhandarkar Road. More roads can be added.</p>
   <div class="note"><b>Please read.</b> Entries are citizen observations and allegations. They are not legal findings and not official PMC records. Whether something is an encroachment is for PMC to decide. This is not a government service and is not connected to PMC.</div>
   <h2>Your data and privacy</h2>
   <ul>
     <li><b>What we store:</b> your name, email and mobile number (to log you in), the photos and notes you add, locations, and a log of who changed what.</li>
     <li><b>Who can see it:</b> only approved members and admins. It is not public. The letters you generate are your own to send.</li>
-    <li><b>Where it lives:</b> a private Google Sheet and Google Drive folder owned by the group admin.</li>
+    <li><b>Where it lives:</b> a private Google Sheet and Google Drive folder owned by a project admin.</li>
     <li><b>AI help:</b> when you add a photo, it is sent to an AI service (Anthropic's Claude) to suggest a description and category. Always check what it suggests.</li>
     <li><b>Maps:</b> locations are looked up using OpenStreetMap and Google Maps links.</li>
     <li><b>Removal:</b> to delete a photo or your account, contact ${contactLine()}.</li>
@@ -1991,7 +1990,7 @@ function helpHtml() {
 
   <h2 id="h-faq">FAQ</h2>
   <details><summary>I did not get my login code</summary><p>Check spam. Wait one minute and press "Send a new code". You can ask for 3 codes an hour. After 5 wrong tries, ask for a new code.</p></details>
-  <details><summary>Why is there a daily limit on photo analysis?</summary><p>The AI costs real money, paid by the group admin. Each member gets 60 analyses a day. You can still add entries by hand when the limit is reached.</p></details>
+  <details><summary>Why is there a daily limit on photo analysis?</summary><p>The AI costs real money, paid by a project admin. Each member gets 60 analyses a day. You can still add entries by hand when the limit is reached.</p></details>
   <details><summary>Can others edit my entry?</summary><p>Yes, members can edit entries. If two people edit together, the app tells the second person and asks them to reload. Once a photo is approved, only admins can change the text. Every change is logged.</p></details>
   <details><summary>I lost my phone</summary><p>Tell an admin. They can block your account so your old login stops working within about a minute.</p></details>
   <details><summary>The map is blank or the page looks broken</summary><p>Refresh the page. If that does not help, clear the site data for this page in your browser and log in again. The map needs an internet connection.</p></details>
