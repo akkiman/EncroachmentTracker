@@ -8,24 +8,25 @@
 <meta property="og:title" content="Footpath Watch Pune">
 <meta property="og:description" content="Citizens documenting Pune's footpaths, one photo at a time.">
 <meta property="og:image" content="https://akkiman.github.io/EncroachmentTracker/og-image.png">
-<meta name="theme-color" content="#0b5fff">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b5fff'/%3E%3Cpath d='M32 8c-7.200 0-12 5.200-12 11.600 0 8.200 12 21.400 12 21.400s12-13.200 12-21.400C44 13.200 39.200 8 32 8z' fill='%23fff'/%3E%3Ccircle cx='32' cy='19.600' r='4.600' fill='%230b5fff'/%3E%3Cpath d='M26 54 30 42M38 54 34 42' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#1c1e22">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231c1e22'/%3E%3Cpath d='M32 8c-7.200 0-12 5.200-12 11.600 0 8.200 12 21.400 12 21.400s12-13.200 12-21.400C44 13.200 39.200 8 32 8z' fill='%23f2b705'/%3E%3Ccircle cx='32' cy='19.600' r='4.600' fill='%231c1e22'/%3E%3Cpath d='M26 54 30 42M38 54 34 42' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; connect-src 'self' data: blob: https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location = window.self.location; } catch (e) {} }</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+<script>try { var _s = JSON.parse(localStorage.getItem("enc_sess") || "null"); if (!_s || !_s.token) document.documentElement.classList.add("pub"); } catch (e) { document.documentElement.classList.add("pub"); }</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#667085;--line:#e3e7ee;--brand:#0b5fff;--brand-ink:#fff;
---ok:#0a7d4f;--warn:#b25e09;--bad:#b42318;--s-draft:#8a94a6;--s-reported:#0b5fff;--s-notice_issued:#b25e09;--s-action_taken:#0a7d4f;--s-regularised:#7a3fd1;--s-closed:#444}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#667085;--line:#e3e7ee;--brand:#123f8c;--brand-ink:#fff;
+--ok:#0a7d4f;--warn:#b25e09;--bad:#b42318;--s-draft:#8a94a6;--s-reported:#123f8c;--s-notice_issued:#b25e09;--s-action_taken:#0a7d4f;--s-regularised:#7a3fd1;--s-closed:#444}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,'Noto Sans Devanagari',system-ui,Arial,sans-serif}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 'Public Sans','Noto Sans Devanagari',system-ui,Arial,sans-serif}
 header{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;padding:10px 16px;flex-wrap:wrap}
 header h1{font-size:16px;margin:0}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
 .logo{width:34px;height:34px;flex:none;display:inline-block}.logo svg,.logo img{width:100%;height:100%;display:block;border-radius:9px}
 .bname{font-weight:700;font-size:16px;line-height:1.1;letter-spacing:-.2px}.bname small{display:block;font-weight:500;font-size:11px;color:var(--mute);letter-spacing:0}
-#authHero{height:130px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#0b5fff,#3b82f6 55%,#7aa8ff);display:flex;align-items:flex-end;padding:14px 22px;color:#fff;background-size:cover;background-position:center;position:relative;overflow:hidden}
+#authHero{height:130px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#123f8c,#3b82f6 55%,#7aa8ff);display:flex;align-items:flex-end;padding:14px 22px;color:#fff;background-size:cover;background-position:center;position:relative;overflow:hidden}
 #authHero.has::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(10,30,80,.75),rgba(10,30,80,.05))}
 #authHero .logo{width:52px;height:52px;position:relative;z-index:1;margin-right:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border-radius:12px}
 #authHero .ttl{position:relative;z-index:1;font-size:22px;font-weight:700;line-height:1.1}#authHero .ttl small{display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px}
@@ -137,11 +138,218 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
   .paper{border:0;padding:0;max-height:none;overflow:visible;font-size:11pt}
   .paper .pb{border:0;margin:0;padding:0;page-break-before:always}
 }
+
+/* ===== Brand and public landing ===== */
+:root{--asp:#1c1e22;--asp2:#2a2d33;--conc:#e8e9ea;--chalk:#f7f7f4;--kerb:#f2b705;--sign:#123f8c;--hd:'Barlow Condensed','Noto Sans Devanagari',Impact,sans-serif}
+.kerb{height:10px;background:repeating-linear-gradient(90deg,var(--asp) 0 28px,var(--kerb) 28px 56px)}
+header{border-bottom:0;box-shadow:0 1px 0 var(--line)}header::after{content:'';position:absolute;left:0;right:0;bottom:-10px;height:10px;background:repeating-linear-gradient(90deg,var(--asp) 0 28px,var(--kerb) 28px 56px)}
+header{margin-bottom:10px}
+.bname{font-family:var(--hd);font-size:21px;font-weight:700;letter-spacing:.2px;text-transform:none}
+.pub header,.pub main{display:none}
+#landing{display:none;background:var(--chalk);color:var(--asp);font-size:16px;line-height:1.55}
+.pub #landing{display:block}
+#landing h1,#landing h2,#landing h3{font-family:var(--hd);font-weight:700;letter-spacing:.2px;line-height:1.02;margin:0}
+#landing a{color:inherit}
+#landing :focus-visible{outline:3px solid var(--kerb);outline-offset:3px}
+.lp-wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.lp-nav{position:sticky;top:0;z-index:50;background:var(--asp);color:#fff}
+.lp-nav .lp-wrap{display:flex;align-items:center;gap:22px;height:64px}
+.lp-nav .brand{color:#fff}.lp-nav .bname small{color:#aab0bb}
+.lp-nav nav{display:flex;gap:4px;margin-left:auto;align-items:center}
+.lp-nav nav a{padding:8px 12px;border-radius:8px;text-decoration:none;font-size:14px;color:#d8dbe1}
+.lp-nav nav a:hover{background:var(--asp2);color:#fff}
+.lp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:2px solid var(--kerb);background:var(--kerb);color:var(--asp)!important;font:700 15px/1 'Public Sans',sans-serif;padding:13px 20px;border-radius:6px;text-decoration:none;cursor:pointer}
+.lp-btn:hover{background:#ffcb2e;border-color:#ffcb2e}
+.lp-btn.ghost{background:transparent;color:#fff!important;border-color:#5b616c}.lp-btn.ghost:hover{border-color:#fff;background:transparent}
+.lp-nav .lp-btn{padding:9px 16px;font-size:14px}
+.lp-hero{background:var(--asp);color:#fff;padding:56px 0 64px}
+.lp-hero .lp-wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:48px;align-items:center}
+.lp-hero h1{font-size:clamp(46px,6.4vw,84px);text-transform:none}
+.lp-mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:22px;font-weight:600;color:var(--kerb);margin:14px 0 0}
+.lp-hero p.lead{font-size:18px;color:#d3d7de;max-width:46ch;margin:18px 0 26px}
+.lp-cta{display:flex;flex-wrap:wrap;gap:12px}
+.lp-fine{font-size:13px;color:#9aa1ad;margin-top:20px;max-width:46ch}
+.ba{position:relative;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#3a3e46;--p:50%;user-select:none;touch-action:pan-y;box-shadow:0 0 0 2px #3a3e46}
+.ba-layer{position:absolute;inset:0}.ba-layer svg,.ba-layer img{width:100%;height:100%;object-fit:cover;display:block}
+.ba-before{clip-path:inset(0 calc(100% - var(--p)) 0 0)}
+.ba-bar{position:absolute;top:0;bottom:0;left:var(--p);width:4px;margin-left:-2px;background:var(--kerb);pointer-events:none}
+.ba-knob{position:absolute;top:50%;left:var(--p);width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--kerb);color:var(--asp);display:flex;align-items:center;justify-content:center;font-weight:700;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+.ba input:focus-visible+.ba-knob{outline:3px solid #fff}
+.ba-tag{position:absolute;top:12px;padding:5px 10px;border-radius:5px;background:rgba(28,30,34,.82);color:#fff;font-size:12px;font-weight:600;pointer-events:none}
+.ba-tag.l{left:12px}.ba-tag.r{right:12px}
+.ba-cap{font-size:12px;color:#9aa1ad;margin-top:8px}
+.lp-sec{padding:84px 0}
+.lp-sec h2{font-size:clamp(34px,4.4vw,54px);max-width:18ch}
+.lp-sec .sub{font-size:18px;color:#424954;max-width:56ch;margin:14px 0 0}
+.lp-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:44px;border-top:3px solid var(--asp)}
+.lp-step{padding:22px 22px 8px 0;position:relative}
+.lp-step+.lp-step{padding-left:22px;border-left:1px solid #cfd2d8}
+.lp-step .n{font-family:var(--hd);font-size:46px;font-weight:700;line-height:1;color:var(--asp)}
+#landing .lp-step h3{font-size:26px;margin:10px 0 8px}.lp-step p{margin:0;color:#424954;font-size:15px}
+.lp-prod{background:var(--conc)}
+.lp-prodgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:40px;align-items:start}
+.paper{background:#fff;border:1px solid #cfd2d8;border-radius:6px;padding:20px 22px;box-shadow:0 14px 30px -18px rgba(0,0,0,.35)}
+.paper h4{margin:0 0 2px;font:700 12px/1.2 'Public Sans',sans-serif;letter-spacing:.3px;color:#6b7280}
+.mock-card{display:grid;grid-template-columns:120px 1fr;gap:16px}
+.mock-photo{aspect-ratio:1/1;border-radius:4px;background:repeating-linear-gradient(135deg,#d8dbe0 0 10px,#e5e7eb 10px 20px);display:flex;align-items:flex-end;padding:6px;font-size:11px;color:#6b7280}
+.chip{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;color:#fff}
+.mock-card b{font-size:16px}.mock-card .m{color:#6b7280;font-size:13px;margin:2px 0 8px}
+.mock-card p{margin:8px 0 0;font-size:14px}
+.letter .ln{height:8px;border-radius:4px;background:#e3e5e9;margin:9px 0}
+.letter .ln.s{width:62%}.letter .ln.m{width:84%}
+.letter .mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;color:#2b3442;margin:6px 0}
+.letter .to{font-size:13px;color:#2b3442;margin:0 0 8px}
+.lp-rules{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:0 48px}
+.lp-rule{border-left:6px solid var(--kerb);padding:4px 0 4px 18px;margin:0 0 26px}
+#landing .lp-rule h3{font-size:26px;margin:0 0 6px}.lp-rule p{margin:0;color:#424954;font-size:15px}
+.lp-dark{background:var(--asp);color:#fff}
+.lp-dark .sub{color:#c4c9d2}
+.plates{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px}
+.plate{background:var(--sign);color:#fff;border:3px solid #fff;outline:3px solid var(--sign);border-radius:8px;padding:12px 22px;display:flex;flex-direction:column;min-width:200px}
+.plate b{font-family:var(--hd);font-size:34px;line-height:1.05;letter-spacing:.3px}.plate span{font-family:'Noto Sans Devanagari',sans-serif;font-size:16px;opacity:.9}
+.plate.more{background:transparent;border-style:dashed;border-color:#5b616c;outline:0;color:#c4c9d2}
+.lp-band{position:relative;background:var(--asp) center/cover no-repeat;color:#fff;padding:90px 0}
+.lp-band.has::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(28,30,34,.92),rgba(28,30,34,.55))}
+.lp-band .lp-wrap{position:relative}
+.lp-band h2{max-width:16ch}
+.lp-faq{max-width:760px;margin-top:30px}
+.lp-faq details{border-top:1px solid #cfd2d8;padding:16px 0}.lp-faq details:last-child{border-bottom:1px solid #cfd2d8}
+.lp-faq summary{cursor:pointer;font-weight:600;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.lp-faq summary::after{content:'+';font-weight:700;font-size:22px;line-height:1}.lp-faq details[open] summary::after{content:'\2212'}
+.lp-faq summary::-webkit-details-marker{display:none}
+.lp-faq p{margin:10px 0 0;color:#424954;max-width:62ch}
+.lp-foot{background:var(--asp);color:#c4c9d2;padding:36px 0 44px;font-size:13px}
+.lp-foot .lp-wrap{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start}
+.lp-foot .brand{color:#fff;margin-bottom:12px}.lp-foot .bname small{color:#aab0bb}
+.lp-foot p{margin:0 0 6px;max-width:64ch}
+.lp-foot button.alink{color:#fff;font-size:13px;margin:0}
+@media (max-width:900px){
+  .lp-hero .lp-wrap{grid-template-columns:1fr;gap:30px}.lp-hero{padding:36px 0 44px}
+  .lp-steps{grid-template-columns:1fr 1fr}.lp-step:nth-child(3){padding-left:0;border-left:0}.lp-step{padding-bottom:20px}
+  .lp-prodgrid,.lp-rules{grid-template-columns:1fr}
+  .lp-nav nav a.hide-s{display:none}.lp-sec{padding:60px 0}
+}
+@media (max-width:560px){.lp-steps{grid-template-columns:1fr}.lp-step+.lp-step{padding-left:0;border-left:0;border-top:1px solid #cfd2d8}.lp-step{padding-right:0}.lp-foot .lp-wrap{grid-template-columns:1fr}.lp-nav .lp-wrap{gap:10px;padding:0 14px}.lp-nav .bname small{display:none}.mock-card{grid-template-columns:84px 1fr}}
+@media (prefers-reduced-motion:no-preference){.lp-hero h1{animation:lpin .7s ease-out both}@keyframes lpin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}}
+#authHero{background:var(--asp)!important}
+#authHero::before{content:'';position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-linear-gradient(90deg,var(--asp) 0 22px,var(--kerb) 22px 44px);z-index:2}
+#authHero .ttl{font-family:var(--hd);font-size:30px}#authHero .ttl small{font-family:'Public Sans',sans-serif}
+.authbox{position:relative}.agclose{position:absolute;top:10px;right:10px;z-index:3;background:rgba(255,255,255,.14)!important;color:#fff;border:0;border-radius:8px;padding:6px 10px;margin:0!important;cursor:pointer}
 </style>
 </head>
 <body>
+
+<div id="landing">
+  <div class="lp-nav"><div class="lp-wrap">
+    <a class="brand" href="#top" aria-label="Footpath Watch home"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1c1e22"/><path d="M12 56 L25 34 H39 L52 56 Z" fill="#fff" opacity=".14"/><path d="M26 56 L30 40 M38 56 L34 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".6"/><path d="M32 7c-7.4 0-12.400 5.400-12.400 12 0 8.500 12.400 22 12.400 22s12.400-13.500 12.400-22C44.400 12.400 39.400 7 32 7z" fill="#f2b705"/><circle cx="32" cy="19.500" r="4.700" fill="#1c1e22"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
+    <nav aria-label="Main"><a class="hide-s" href="#how">How it works</a><a class="hide-s" href="#product">What you get</a><a class="hide-s" href="#rules">Ground rules</a><a class="hide-s" href="#faq">Questions</a><button class="lp-btn" id="lpLogin1">Member login</button></nav>
+  </div></div>
+
+  <section class="lp-hero" id="top"><div class="lp-wrap">
+    <div>
+      <h1>Footpaths are for walking.</h1>
+      <p class="lp-mr">पदपथ चालण्यासाठी आहेत.</p>
+      <p class="lead">Footpath Watch helps Pune residents photograph encroachments, pin them on a map and send PMC a clear letter in English and Marathi. It then keeps track of what has been answered and what has not.</p>
+      <div class="lp-cta"><button class="lp-btn" id="lpLogin2">Member login</button><a class="lp-btn ghost" href="#how">See how it works</a></div>
+      <p class="lp-fine">Run by citizens of the DGPC group. This is not a government service and it is not connected to PMC.</p>
+    </div>
+    <div>
+      <div class="ba" id="ba" style="--p:50%">
+        <div class="ba-layer" id="baAfter"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The same footpath, clear"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/></svg></div>
+        <div class="ba-layer ba-before" id="baBefore"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A footpath blocked by a stall, boxes and a parked bike"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/><g><rect x="70" y="270" width="150" height="14" rx="3" fill="#8b5a2b"/><rect x="82" y="284" width="8" height="46" fill="#6d4522"/><rect x="200" y="284" width="8" height="46" fill="#6d4522"/>
+<path d="M60 262 L150 214 L240 262 Z" fill="#c8372d"/><path d="M60 262 H240" stroke="#8d241d" stroke-width="4"/>
+<rect x="300" y="300" width="70" height="46" fill="#c58f4f"/><rect x="316" y="268" width="60" height="38" fill="#d9a665"/><rect x="380" y="316" width="56" height="34" fill="#b3763a"/>
+<circle cx="520" cy="352" r="22" fill="none" stroke="#222" stroke-width="5"/><circle cx="600" cy="352" r="22" fill="none" stroke="#222" stroke-width="5"/><path d="M520 352 L550 318 L600 352 M550 318 H575" stroke="#222" stroke-width="5" fill="none"/></g></svg></div>
+        <span class="ba-tag l">Blocked</span><span class="ba-tag r">Clear</span>
+        <div class="ba-bar"></div>
+        <input type="range" min="0" max="100" value="50" id="baRange" aria-label="Drag to compare a blocked footpath with a clear one">
+        <div class="ba-knob" aria-hidden="true">&#8596;</div>
+      </div>
+      <p class="ba-cap">Drag to clear the footpath. Illustrative images.</p>
+    </div>
+  </div></section>
+  <div class="kerb"></div>
+
+  <section class="lp-sec" id="how"><div class="lp-wrap">
+    <h2>From a photo to a letter, then to a result.</h2>
+    <p class="sub">Four steps, the same every time, so nothing depends on one person remembering.</p>
+    <div class="lp-steps">
+      <div class="lp-step"><div class="n">1</div><h3>Photograph</h3><p>Take a photo from the road or footpath. If location is on, the pin is placed for you.</p></div>
+      <div class="lp-step"><div class="n">2</div><h3>Check</h3><p>The AI suggests a description and a category. You correct it, and an admin approves the photo.</p></div>
+      <div class="lp-step"><div class="n">3</div><h3>Send</h3><p>Pick the entries and get one letter for the Shivajinagar-Ghole Road Ward Office. File on the PMC portal too if you have an account.</p></div>
+      <div class="lp-step"><div class="n">4</div><h3>Follow up</h3><p>Reminders show when a complaint has gone quiet. Admins get a list every Monday.</p></div>
+    </div>
+  </div></section>
+
+  <section class="lp-sec lp-prod" id="product"><div class="lp-wrap">
+    <h2>Everything on one page, in two languages.</h2>
+    <p class="sub">Each entry holds the photos, the place, the history and the status. The letter writes itself from the entries you pick.</p>
+    <div class="lp-prodgrid">
+      <div class="paper" aria-label="Example entry">
+        <h4>SAMPLE ENTRY</h4>
+        <div class="mock-card" style="margin-top:12px">
+          <div class="mock-photo">Photo</div>
+          <div><b>Example Stores</b><div class="m">Sample Road, Pune</div><span class="chip" style="background:#123f8c">Reported to PMC</span><span class="chip" style="background:#7a3fd1;margin-left:6px">Portal complaint</span>
+          <p>Goods appear to be displayed on the footpath in front of the shop.</p><p class="m" style="margin-top:10px">Reminder due in 4 days</p></div>
+        </div>
+      </div>
+      <div class="paper letter" aria-label="Example letter">
+        <h4>SAMPLE LETTER</h4>
+        <p class="to" style="margin-top:12px">To, The Ward Officer, Shivajinagar-Ghole Road Ward Office, Pune Municipal Corporation</p>
+        <div class="ln m"></div><div class="ln"></div><div class="ln s"></div>
+        <p class="mr">प्रति, क्षेत्रीय कार्यालय, शिवाजीनगर-घोले रोड, पुणे महानगरपालिका</p>
+        <div class="ln m"></div><div class="ln s"></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="lp-sec" id="rules"><div class="lp-wrap">
+    <h2>How we report.</h2>
+    <p class="sub">A complaint is stronger when it is calm, accurate and easy to check.</p>
+    <div class="lp-rules">
+      <div class="lp-rule"><h3>Describe, do not accuse.</h3><p>We write what the photo shows, with words like "appears to". We never write about the owner.</p></div>
+      <div class="lp-rule"><h3>Public ground only.</h3><p>Photos are taken from the road or the footpath. Nobody enters private property.</p></div>
+      <div class="lp-rule"><h3>No faces, no number plates.</h3><p>Admins review every photo and can blur or reject it before it is used.</p></div>
+      <div class="lp-rule"><h3>Observations, not verdicts.</h3><p>Only PMC decides what is an encroachment. We make it easy to tell them clearly.</p></div>
+    </div>
+  </div></section>
+
+  <section class="lp-sec lp-dark" id="roads"><div class="lp-wrap">
+    <h2>Where we are watching.</h2>
+    <p class="sub">We started around the DGPC neighbourhood. New roads are added when members ask.</p>
+    <div class="plates"><div class="plate"><b>Prabhat Road</b><span>प्रभात रोड</span></div><div class="plate"><b>Bhandarkar Road</b><span>भांडारकर रोड</span></div><div class="plate more"><b>Your road?</b><span>Ask a group admin</span></div></div>
+  </div></section>
+
+  <section class="lp-band" id="joinband"><div class="lp-wrap">
+    <h2>Help keep one road clear.</h2>
+    <p class="sub" style="color:#d3d7de;font-size:18px;max-width:46ch;margin:14px 0 24px">Ask for access with your name and email. An admin approves you and you can start the same day.</p>
+    <button class="lp-btn" id="lpJoin">Request access</button>
+  </div></section>
+
+  <section class="lp-sec" id="faq"><div class="lp-wrap">
+    <h2>Questions.</h2>
+    <div class="lp-faq">
+      <details><summary>Who can use it?</summary><p>Approved members of the group. Request access and an admin will review it. Logging in uses a code sent to your email, so there is no password to remember.</p></details>
+      <details><summary>Is this an official PMC service?</summary><p>No. It is a citizens' tool. Letters are addressed to PMC and you send them yourself. Whether something is an encroachment is for PMC to decide.</p></details>
+      <details><summary>Do I need a PMC portal account?</summary><p>No. The portal helper is optional. If you have an account, it copies the details you need and tracks the complaint number for you.</p></details>
+      <details><summary>What happens to my photos?</summary><p>They are stored in a private Google Drive folder and are visible only to approved members. When you add a photo, it is also sent to an AI service to suggest a description. You can ask an admin to remove a photo at any time.</p></details>
+      <details><summary>Does it cost anything?</summary><p>It is free for members. The group admin pays for the AI and hosting, which is why each member has a daily limit on photo analysis.</p></details>
+    </div>
+  </div></section>
+
+  <div class="kerb"></div>
+  <footer class="lp-foot"><div class="lp-wrap">
+    <div>
+      <a class="brand" href="#top"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1c1e22"/><path d="M12 56 L25 34 H39 L52 56 Z" fill="#fff" opacity=".14"/><path d="M26 56 L30 40 M38 56 L34 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".6"/><path d="M32 7c-7.4 0-12.400 5.400-12.400 12 0 8.500 12.400 22 12.400 22s12.400-13.500 12.400-22C44.400 12.400 39.400 7 32 7z" fill="#f2b705"/><circle cx="32" cy="19.500" r="4.700" fill="#1c1e22"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
+      <p>Entries are citizen observations and allegations. They are not legal findings or official PMC records.</p>
+      <p>Map data from OpenStreetMap contributors. Built with Leaflet.</p>
+    </div>
+    <div><button class="alink" id="lpAbout">About and privacy</button><p style="margin-top:8px">Version 1.0</p></div>
+  </div></footer>
+</div>
 <header>
-  <a class="brand" href="#" onclick="document.querySelector('nav button[data-view=list]').click();return false"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 54 L26 30 H38 L50 54 Z" fill="#fff" opacity=".2"/><path d="M26 54 L30 36 M38 54 L34 36" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><path d="M32 8c-7.2 0-12 5.2-12 11.6 0 8.2 12 21.4 12 21.4s12-13.2 12-21.4C44 13.2 39.200 8 32 8z" fill="#fff"/><circle cx="32" cy="19.600" r="4.600" fill="#0b5fff"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
+  <a class="brand" href="#" onclick="document.querySelector('nav button[data-view=list]').click();return false"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1c1e22"/><path d="M12 56 L25 34 H39 L52 56 Z" fill="#fff" opacity=".14"/><path d="M26 56 L30 40 M38 56 L34 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".6"/><path d="M32 7c-7.4 0-12.400 5.400-12.400 12 0 8.500 12.400 22 12.400 22s12.400-13.500 12.400-22C44.400 12.400 39.400 7 32 7z" fill="#f2b705"/><circle cx="32" cy="19.500" r="4.700" fill="#1c1e22"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
   <nav>
     <button data-view="list" class="on">Properties</button>
     <button data-view="letter">Letter / पत्र</button>
@@ -157,7 +365,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 
 <div id="authGate" class="off">
   <div class="authbox">
-    <div id="authHero"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 54 L26 30 H38 L50 54 Z" fill="#fff" opacity=".2"/><path d="M26 54 L30 36 M38 54 L34 36" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><path d="M32 8c-7.2 0-12 5.2-12 11.6 0 8.2 12 21.4 12 21.4s12-13.2 12-21.4C44 13.2 39.200 8 32 8z" fill="#fff"/><circle cx="32" cy="19.600" r="4.600" fill="#0b5fff"/></svg></span><span class="ttl">Footpath Watch<small>Pune citizens' encroachment tracker</small></span></div>
+    <button class="agclose" id="agClose" aria-label="Back to home">Close</button>
+    <div id="authHero"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1c1e22"/><path d="M12 56 L25 34 H39 L52 56 Z" fill="#fff" opacity=".14"/><path d="M26 56 L30 40 M38 56 L34 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".6"/><path d="M32 7c-7.4 0-12.400 5.400-12.400 12 0 8.500 12.400 22 12.400 22s12.400-13.500 12.400-22C44.400 12.400 39.400 7 32 7z" fill="#f2b705"/><circle cx="32" cy="19.500" r="4.700" fill="#1c1e22"/></svg></span><span class="ttl">Footpath Watch<small>Pune citizens' encroachment tracker</small></span></div>
     <div class="authin">
     <p style="margin:0 0 8px;font-weight:600">Document it. Report it. Follow it up.</p>
     <ul class="vp"><li>Geo-tagged photos of footpath and margin encroachments</li><li>Ready letters to PMC in English and Marathi</li><li>Reminders so nothing is forgotten</li></ul>
@@ -529,7 +738,7 @@ const CATS = {
 };
 const STATUS = {
   draft         :{en:'Draft (to verify)',  mr:'मसुदा (पडताळणी बाकी)', color:'#f59e0b', badge:'#8a94a6'},
-  reported      :{en:'Reported to PMC',    mr:'तक्रार नोंदवली',        color:'#0b5fff'},
+  reported      :{en:'Reported to PMC',    mr:'तक्रार नोंदवली',        color:'#123f8c'},
   notice_issued :{en:'Notice issued',      mr:'नोटीस दिली',            color:'#b25e09'},
   action_taken  :{en:'Action taken',       mr:'कारवाई झाली',           color:'#0a7d4f'},
   regularised   :{en:'Regularised',        mr:'नियमित केले',           color:'#7a3fd1'},
@@ -1795,27 +2004,40 @@ function helpHtml() {
   <p class="ver">Built with Leaflet, OpenStreetMap and Google Apps Script. Map data from OpenStreetMap contributors.</p>`;
 }
 function initHelp() {
+  const tryImg = (src, ok) => { const i = new Image(); i.onload = () => ok(src); i.src = src; };
   $('#helpBody').innerHTML = helpHtml();
   $('#aboutBody').innerHTML = aboutHtml();
   $('#agAbout').onclick = () => $('#dlgAbout').showModal();
+  $('#lpAbout').onclick = () => $('#dlgAbout').showModal();
+  $('#agClose').onclick = () => { gateWanted = false; $('#authGate').classList.add('off'); };
+  ['lpLogin1', 'lpLogin2'].forEach(id => { $('#' + id).onclick = () => openGate('1'); });
+  $('#lpJoin').onclick = () => openGate('Req');
+  const range = $('#baRange'); const setP = () => $('#ba').style.setProperty('--p', range.value + '%');
+  range.addEventListener('input', setP); setP();
+  const tryLayer = (src, sel) => { const i = new Image(); i.onload = () => { $(sel).innerHTML = ''; $(sel).appendChild(i); }; i.alt = ''; i.src = src; };
+  tryLayer('hero-before.jpg', '#baBefore'); tryLayer('hero-after.jpg', '#baAfter');
+  tryImg('band.jpg', s => { const b = $('#joinband'); b.style.backgroundImage = 'url(' + s + ')'; b.classList.add('has'); });
   $('#abClose').onclick = () => $('#dlgAbout').close();
   $('#helpBody').addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('.tocl a'); if (!a) return;
     e.preventDefault(); const t = document.getElementById(a.getAttribute('href').slice(1)); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  // Optional brand images: add logo.png and login-hero.jpg next to index.html and they are picked up automatically.
-  const tryImg = (src, ok) => { const i = new Image(); i.onload = () => ok(src); i.src = src; };
+  // Optional brand images: add logo.png, login-hero.jpg, hero-before.jpg, hero-after.jpg and band.jpg next to index.html.
   tryImg('logo.png', s => document.querySelectorAll('.logo').forEach(e => { e.innerHTML = '<img src="' + s + '" alt="">'; }));
   tryImg('login-hero.jpg', s => { const h = $('#authHero'); h.style.backgroundImage = 'url(' + s + ')'; h.classList.add('has'); });
 }
 
+let gateWanted = false;
+function openGate(step) { gateWanted = true; showGate(step || '1'); }
 function showGate(step, msg) {
   step = step || '1';
-  $('#authGate').classList.remove('off');
+  document.documentElement.classList.add('pub');
   ['1', 'Req', 'Otp', 'Pend'].forEach(k => { $('#agStep' + k).hidden = k !== step; });
   $('#agMsg').textContent = msg || '';
+  $('#authGate').classList.toggle('off', !(gateWanted || msg || step !== '1'));
+  if (!$('#authGate').classList.contains('off')) setTimeout(() => { const f = $('#agStep' + step + ' input'); if (f) f.focus(); }, 50);
 }
-function hideGate() { $('#authGate').classList.add('off'); }
+function hideGate() { gateWanted = false; $('#authGate').classList.add('off'); document.documentElement.classList.remove('pub'); if (typeof map !== 'undefined' && map) setTimeout(() => map.invalidateSize(), 120); }
 async function agRun(btn, fn) {
   btn.disabled = true; $('#agMsg').textContent = '';
   try { await fn(); } catch (e) { $('#agMsg').textContent = e.message; }
