@@ -3,7 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Encroachment Tracker | Prabhat Road and Bhandarkar Road</title>
+<title>Footpath Watch Pune | Citizens' encroachment tracker</title>
+<meta name="description" content="Footpath Watch: a citizens' tool to document footpath and margin encroachments in Pune and write clear letters to PMC.">
+<meta property="og:title" content="Footpath Watch Pune">
+<meta property="og:description" content="Citizens documenting Pune's footpaths, one photo at a time.">
+<meta property="og:image" content="https://akkiman.github.io/EncroachmentTracker/og-image.png">
+<meta name="theme-color" content="#0b5fff">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b5fff'/%3E%3Cpath d='M32 8c-7.200 0-12 5.200-12 11.600 0 8.200 12 21.400 12 21.400s12-13.200 12-21.400C44 13.200 39.200 8 32 8z' fill='%23fff'/%3E%3Ccircle cx='32' cy='19.600' r='4.600' fill='%230b5fff'/%3E%3Cpath d='M26 54 30 42M38 54 34 42' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; connect-src 'self' data: blob: https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
 <script>if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location = window.self.location; } catch (e) {} }</script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
@@ -16,6 +22,24 @@
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,'Noto Sans Devanagari',system-ui,Arial,sans-serif}
 header{position:sticky;top:0;z-index:1000;background:#fff;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;padding:10px 16px;flex-wrap:wrap}
 header h1{font-size:16px;margin:0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.logo{width:34px;height:34px;flex:none;display:inline-block}.logo svg,.logo img{width:100%;height:100%;display:block;border-radius:9px}
+.bname{font-weight:700;font-size:16px;line-height:1.1;letter-spacing:-.2px}.bname small{display:block;font-weight:500;font-size:11px;color:var(--mute);letter-spacing:0}
+#authHero{height:130px;border-radius:14px 14px 0 0;background:linear-gradient(135deg,#0b5fff,#3b82f6 55%,#7aa8ff);display:flex;align-items:flex-end;padding:14px 22px;color:#fff;background-size:cover;background-position:center;position:relative;overflow:hidden}
+#authHero.has::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(10,30,80,.75),rgba(10,30,80,.05))}
+#authHero .logo{width:52px;height:52px;position:relative;z-index:1;margin-right:12px;box-shadow:0 4px 14px rgba(0,0,0,.25);border-radius:12px}
+#authHero .ttl{position:relative;z-index:1;font-size:22px;font-weight:700;line-height:1.1}#authHero .ttl small{display:block;font-size:12px;font-weight:500;opacity:.9;margin-top:3px}
+.authbox{padding:0!important;overflow:hidden}.authin{padding:18px 22px 20px}
+.vp{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:5px;font-size:13px;color:var(--mute)}.vp li:before{content:'\2713';color:var(--ok);font-weight:700;margin-right:8px}
+.alink{background:none;border:0;padding:0;color:var(--brand);cursor:pointer;font-size:12px;text-decoration:underline;margin:10px 0 0!important}
+.help{max-width:860px;margin:0 auto}.help h2{margin:22px 0 6px;font-size:18px}.help h3{margin:14px 0 4px;font-size:14px}.help p,.help li{color:#2b3442}
+.help .tocl{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.help .tocl a{border:1px solid var(--line);background:#fff;border-radius:999px;padding:4px 12px;font-size:13px;text-decoration:none;color:var(--brand)}
+.help details{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:6px 0}.help summary{cursor:pointer;font-weight:600}
+.help .note{background:#fff8e6;border:1px solid #f1d9a0;border-radius:10px;padding:10px 12px;margin:10px 0}
+.help .steps{counter-reset:s;list-style:none;padding:0}.help .steps li{counter-increment:s;position:relative;padding:6px 0 6px 38px;border-bottom:1px solid var(--line)}
+.help .steps li:before{content:counter(s);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;background:#eef3ff;color:var(--brand);font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+.help table{border-collapse:collapse;width:100%;background:#fff}.help td,.help th{border:1px solid var(--line);padding:6px 10px;text-align:left;font-size:13px;vertical-align:top}
+.help .ver{color:var(--mute);font-size:12px;margin-top:20px}
 nav{display:flex;gap:4px}
 nav button{border:0;background:none;padding:8px 12px;border-radius:8px;cursor:pointer;font:inherit;color:var(--mute)}
 nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
@@ -117,13 +141,14 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 </head>
 <body>
 <header>
-  <h1>Encroachment Tracker</h1>
+  <a class="brand" href="#" onclick="document.querySelector('nav button[data-view=list]').click();return false"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 54 L26 30 H38 L50 54 Z" fill="#fff" opacity=".2"/><path d="M26 54 L30 36 M38 54 L34 36" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><path d="M32 8c-7.2 0-12 5.2-12 11.6 0 8.2 12 21.4 12 21.4s12-13.2 12-21.4C44 13.2 39.200 8 32 8z" fill="#fff"/><circle cx="32" cy="19.600" r="4.600" fill="#0b5fff"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
   <nav>
     <button data-view="list" class="on">Properties</button>
     <button data-view="letter">Letter / पत्र</button>
     <button data-view="members" id="navMembers" style="display:none">Members<span id="memBadge" class="badge" style="display:none"></span></button>
     <button data-view="review" id="navReview" style="display:none">Review<span id="rvBadge" class="badge" style="display:none"></span></button>
     <button data-view="audit" id="navAudit" style="display:none">Audit</button>
+    <button data-view="help">Help</button>
     <button data-view="settings" id="navSettings">Settings</button>
   </nav>
   <span id="sync"></span>
@@ -132,7 +157,10 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 
 <div id="authGate" class="off">
   <div class="authbox">
-    <h2>Encroachment Tracker</h2>
+    <div id="authHero"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0b5fff"/><path d="M14 54 L26 30 H38 L50 54 Z" fill="#fff" opacity=".2"/><path d="M26 54 L30 36 M38 54 L34 36" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/><path d="M32 8c-7.2 0-12 5.2-12 11.6 0 8.2 12 21.4 12 21.4s12-13.2 12-21.4C44 13.2 39.200 8 32 8z" fill="#fff"/><circle cx="32" cy="19.600" r="4.600" fill="#0b5fff"/></svg></span><span class="ttl">Footpath Watch<small>Pune citizens' encroachment tracker</small></span></div>
+    <div class="authin">
+    <p style="margin:0 0 8px;font-weight:600">Document it. Report it. Follow it up.</p>
+    <ul class="vp"><li>Geo-tagged photos of footpath and margin encroachments</li><li>Ready letters to PMC in English and Marathi</li><li>Reminders so nothing is forgotten</li></ul>
     <p class="hint">For approved members only. Log in with your registered email or mobile number. A code is sent to your email.</p>
     <div id="agStep1">
       <label>Email or mobile number</label>
@@ -157,8 +185,15 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
       <button id="agBack3">Back</button>
     </div>
     <p id="agMsg" class="hint" style="color:var(--bad)"></p>
+    <button class="alink" id="agAbout">About, privacy and how it works</button>
+    </div>
   </div>
 </div>
+
+<dialog id="dlgAbout" style="width:min(760px,96vw)">
+  <div class="dhead"><h2>About Footpath Watch</h2><button id="abClose">Close</button></div>
+  <div class="dbody help" id="aboutBody"></div>
+</dialog>
 
 <main>
 <!-- ================= PROPERTIES ================= -->
@@ -274,6 +309,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 </section>
 
 <!-- ================= SETTINGS ================= -->
+<section id="view-help" class="view"><div class="help" id="helpBody"></div></section>
 <section id="view-settings" class="view">
   <div class="g2">
     <div class="panel">
@@ -1672,6 +1708,107 @@ function bindReview() {
    Login (email OTP) and member approval
    ============================================================ */
 let agId = '', MEMBERS = [];
+
+/* ---------- Help, About, branding ---------- */
+const APP_VERSION = 'v1.0 (21 Nov 2026)';
+const CONTACT_EMAIL = ''; // put a group contact email here, for example 'footpathwatch@example.org'. Leave empty to say "ask an admin".
+const contactLine = () => CONTACT_EMAIL ? `<a href="mailto:${esc(CONTACT_EMAIL)}?subject=Footpath%20Watch%20help">${esc(CONTACT_EMAIL)}</a>` : 'any admin of the DGPC group';
+function aboutHtml() {
+  return `
+  <h2 style="margin-top:0">What this is</h2>
+  <p>Footpath Watch is a free tool run by citizens of the DGPC group. Members photograph alleged encroachments on footpaths, road margins and flex banners, record them with a location, and generate clear letters to the PMC Shivajinagar-Ghole Road Ward Office in English and Marathi. It also reminds us to follow up so complaints do not get forgotten.</p>
+  <p>It currently covers Prabhat Road and Bhandarkar Road. More roads can be added.</p>
+  <div class="note"><b>Please read.</b> Entries are citizen observations and allegations. They are not legal findings and not official PMC records. Whether something is an encroachment is for PMC to decide. This is not a government service and is not connected to PMC.</div>
+  <h2>Your data and privacy</h2>
+  <ul>
+    <li><b>What we store:</b> your name, email and mobile number (to log you in), the photos and notes you add, locations, and a log of who changed what.</li>
+    <li><b>Who can see it:</b> only approved members and admins. It is not public. The letters you generate are your own to send.</li>
+    <li><b>Where it lives:</b> a private Google Sheet and Google Drive folder owned by the group admin.</li>
+    <li><b>AI help:</b> when you add a photo, it is sent to an AI service (Anthropic's Claude) to suggest a description and category. Always check what it suggests.</li>
+    <li><b>Maps:</b> locations are looked up using OpenStreetMap and Google Maps links.</li>
+    <li><b>Removal:</b> to delete a photo or your account, contact ${contactLine()}.</li>
+  </ul>
+  <p class="ver">Version ${APP_VERSION}</p>`;
+}
+function helpHtml() {
+  return `
+  <h1 style="font-size:22px;margin:6px 0">Help and About</h1>
+  <div class="tocl"><a href="#h-start">Getting started</a><a href="#h-photo">Adding a photo</a><a href="#h-letter">Making a letter</a><a href="#h-portal">PMC portal</a><a href="#h-follow">Follow-up</a><a href="#h-rules">Good practice</a><a href="#h-faq">FAQ</a><a href="#h-about">About and privacy</a></div>
+
+  <h2 id="h-start">Getting started</h2>
+  <ol class="steps">
+    <li><b>Log in.</b> Enter your email or mobile number. A 6-digit code is emailed to you. It works for 10 minutes. You stay logged in for 14 days on that device.</li>
+    <li><b>New here?</b> Choose "Request access". An admin approves you and you get an email.</li>
+    <li><b>Find your way.</b> <b>Properties</b> is the map and list. <b>Letter</b> writes the letter. <b>Help</b> is this page. Admins also see <b>Members</b>, <b>Review</b> and <b>Audit</b>.</li>
+  </ol>
+
+  <h2 id="h-photo">Adding a photo</h2>
+  <ol class="steps">
+    <li>Press <b>Add from photos (AI)</b> and choose one or more photos taken on your phone. Photos with location switched on are placed on the map automatically.</li>
+    <li>No location in the photo? Use <b>Pick on map</b> then confirm the pin.</li>
+    <li>The AI suggests the shop or place name, the category and a description. <b>Read it and correct it.</b> It can be wrong.</li>
+    <li>Save. The photo shows as <i>pending</i> until an admin approves it.</li>
+  </ol>
+  <details><summary>Categories explained</summary><p>Side margin and front margin: open space the building must keep. Footpath: goods, tables, steps or structures on the walkway. Road: on the carriageway. Flex: banners and hoardings. Other: anything else, described in words.</p></details>
+  <details><summary>Why was my photo rejected or blurred?</summary><p>Admins may reject photos that are unclear, show the wrong place, or show people or number plates. Admins can also blur faces. Add a clearer photo to the same entry.</p></details>
+
+  <h2 id="h-letter">Making a letter</h2>
+  <ol class="steps">
+    <li>Open <b>Letter</b>. Fill in your name and address once in Settings so it appears on the letter.</li>
+    <li>Choose a road, then tick the entries to include.</li>
+    <li>Check the English and Marathi text, then print, copy or download it and send it to the Ward Office.</li>
+    <li>Press <b>Mark these as sent to PMC</b> so the date is recorded and the reminder clock starts. You can also add an entry by hand with <b>+ Add manually</b>.</li>
+  </ol>
+  <p>Tip: ask a Marathi reader to look over the wording the first time.</p>
+
+  <h2 id="h-portal">PMC complaint portal (optional)</h2>
+  <p>If you have an account on the PMC complaint portal, open an entry and use its portal helper. It copies the description, address and landmark for you and opens the portal. After you file, save the complaint number and the due date. Use <b>Track a complaint</b> in the toolbar to check status on the PMC site. You do not need a portal account to use Footpath Watch.</p>
+
+  <h2 id="h-follow">Follow-up and reminders</h2>
+  <table><tr><th>What</th><th>How it works</th></tr>
+  <tr><td>Reminder</td><td>An entry becomes due for a reminder 15 days after the last letter. For portal complaints it is due on the date the portal promised.</td></tr>
+  <tr><td>Weekly email</td><td>Every Monday, admins get a list of overdue entries.</td></tr>
+  <tr><td>Status</td><td>Draft, Reported, Notice issued, Action taken, Regularised, Closed. Update it as things change.</td></tr></table>
+
+  <h2 id="h-rules">Good practice</h2>
+  <ul>
+    <li>Photograph from public ground such as the road or footpath. Do not enter private property.</li>
+    <li>Avoid faces and number plates. Do not photograph people.</li>
+    <li>Describe what you see, not what you think of the owner. Use words like "appears to" when unsure.</li>
+    <li>One entry per issue. Pin the right spot.</li>
+    <li>Be polite in letters. Facts and photos persuade better than anger.</li>
+    <li>Do not share logins. Your login is you.</li>
+  </ul>
+
+  <h2 id="h-faq">FAQ</h2>
+  <details><summary>I did not get my login code</summary><p>Check spam. Wait one minute and press "Send a new code". You can ask for 3 codes an hour. After 5 wrong tries, ask for a new code.</p></details>
+  <details><summary>Why is there a daily limit on photo analysis?</summary><p>The AI costs real money, paid by the group admin. Each member gets 60 analyses a day. You can still add entries by hand when the limit is reached.</p></details>
+  <details><summary>Can others edit my entry?</summary><p>Yes, members can edit entries. If two people edit together, the app tells the second person and asks them to reload. Once a photo is approved, only admins can change the text. Every change is logged.</p></details>
+  <details><summary>I lost my phone</summary><p>Tell an admin. They can block your account so your old login stops working within about a minute.</p></details>
+  <details><summary>The map is blank or the page looks broken</summary><p>Refresh the page. If that does not help, clear the site data for this page in your browser and log in again. The map needs an internet connection.</p></details>
+  <details><summary>Is this official?</summary><p>No. It is a citizens' tool. See the note below.</p></details>
+
+  <h2 id="h-about">About and privacy</h2>
+  ${aboutHtml().replace('<h2 style="margin-top:0">What this is</h2>', '<h3>What this is</h3>').replace('<h2>Your data and privacy</h2>', '<h3>Your data and privacy</h3>')}
+  <h3>Support</h3>
+  <p>Problems or ideas? Contact ${contactLine()}.</p>
+  <p class="ver">Built with Leaflet, OpenStreetMap and Google Apps Script. Map data from OpenStreetMap contributors.</p>`;
+}
+function initHelp() {
+  $('#helpBody').innerHTML = helpHtml();
+  $('#aboutBody').innerHTML = aboutHtml();
+  $('#agAbout').onclick = () => $('#dlgAbout').showModal();
+  $('#abClose').onclick = () => $('#dlgAbout').close();
+  $('#helpBody').addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('.tocl a'); if (!a) return;
+    e.preventDefault(); const t = document.getElementById(a.getAttribute('href').slice(1)); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  // Optional brand images: add logo.png and login-hero.jpg next to index.html and they are picked up automatically.
+  const tryImg = (src, ok) => { const i = new Image(); i.onload = () => ok(src); i.src = src; };
+  tryImg('logo.png', s => document.querySelectorAll('.logo').forEach(e => { e.innerHTML = '<img src="' + s + '" alt="">'; }));
+  tryImg('login-hero.jpg', s => { const h = $('#authHero'); h.style.backgroundImage = 'url(' + s + ')'; h.classList.add('has'); });
+}
+
 function showGate(step, msg) {
   step = step || '1';
   $('#authGate').classList.remove('off');
@@ -1785,7 +1922,7 @@ function init() {
     if (b.dataset.view === 'letter') { renderLetterSel(); renderLetter(); }
     if (b.dataset.view === 'audit') loadAudit();
   });
-  loadSettingsUI(); bindSettings(); bindAuth(); bindEditor(); bindReview(); bindPicker(); updateSyncLabel();
+  initHelp(); loadSettingsUI(); bindSettings(); bindAuth(); bindEditor(); bindReview(); bindPicker(); updateSyncLabel();
   window.addEventListener('focus', () => { if (remote() && sess().token && !$('#dlgEdit').open) { loadData(); if (sess().role === 'admin') loadMembers(); } });
   if (remote() && !sess().token) { showGate('1'); return; }
   loadData();
