@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Encroachment Tracker | Prabhat Road and Bhandarkar Road</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://unpkg.com https://*.tile.openstreetmap.org https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; connect-src 'self' data: blob: https://script.google.com https://script.googleusercontent.com https://*.google.com https://*.googleusercontent.com https://*.usercontent.google.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<script>if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location = window.self.location; } catch (e) {} }</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -171,8 +173,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
     <button id="btnBulk">Bulk add names</button>
     <button id="btnRefresh" title="Reload from the sheet">Refresh</button>
     <button id="btnCsv">Export CSV</button>
-    <a href="https://complaint.pmc.gov.in/login" target="_blank" rel="noopener" class="hint" style="align-self:center;white-space:nowrap" title="Optional: only if you have your own account on the PMC portal">PMC complaint portal</a>
-    <a href="https://complaint.pmc.gov.in/rptTokenDetailsByTokenCitizen" target="_blank" rel="noopener" class="hint" style="align-self:center;white-space:nowrap" title="Check the status of a portal complaint by its token number">Track a complaint</a>
+    <a href="https://complaint.pmc.gov.in/login" target="_blank" rel="noopener noreferrer" class="hint" style="align-self:center;white-space:nowrap" title="Optional: only if you have your own account on the PMC portal">PMC complaint portal</a>
+    <a href="https://complaint.pmc.gov.in/rptTokenDetailsByTokenCitizen" target="_blank" rel="noopener noreferrer" class="hint" style="align-self:center;white-space:nowrap" title="Check the status of a portal complaint by its token number">Track a complaint</a>
   </div>
   <div class="split">
     <div>
@@ -439,7 +441,7 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 
 <div id="toast" class="toast"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 /* ============================================================
    Labels (English and Marathi)
@@ -534,8 +536,17 @@ function parseCoords(s) {
   return m ? {lat: Number(m[1]), lng: Number(m[2])} : null;
 }
 const isShortMapsLink = s => /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl)\//i.test(s || '');
+// Only Google Maps links and Google Drive thumbnails are ever put into links or images (blocks javascript: and other schemes).
+const MAP_HOST = /^(www\.google\.(com|co\.in)|maps\.google\.(com|co\.in)|maps\.app\.goo\.gl|goo\.gl)$/i;
+function safeMapsUrl(u) { try { const x = new URL(String(u || '')); if (x.protocol === 'https:' && MAP_HOST.test(x.hostname)) return x.href; } catch (e) {} return ''; }
+function safeImgUrl(u) {
+  u = String(u || '');
+  if (/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(u) || /^blob:/i.test(u)) return u;
+  try { const x = new URL(u); if (x.protocol === 'https:' && (x.hostname === 'drive.google.com' || /\.googleusercontent\.com$/i.test(x.hostname))) return x.href; } catch (e) {}
+  return '';
+}
 function mapsUrlFor(p) {
-  if (p.maps_url) return p.maps_url;
+  const s = safeMapsUrl(p.maps_url); if (s) return s;
   if (p.lat != null && p.lng != null) return `https://www.google.com/maps?q=${p.lat},${p.lng}`;
   return '';
 }
@@ -689,7 +700,7 @@ function renderList() {
   el.innerHTML = rows.map(p => {
     const img = (p.images || [])[0];
     return `<div class="card" data-id="${esc(p.id)}">
-      ${img ? `<img class="thumb" src="${esc(img.url)}" alt="" loading="lazy">` : `<div class="thumb"></div>`}
+      ${img ? `<img class="thumb" src="${esc(safeImgUrl(img.url))}" alt="" loading="lazy">` : `<div class="thumb"></div>`}
       <div>
         <h3>${esc(p.name)}${p.name_mr ? ' <span class="hint">/ ' + esc(p.name_mr) + '</span>' : ''}</h3>
         <div>${statusBadge(p)}${followChip(p)}${badge(p.road || 'Road not set')}${badge((CATS[p.category] || CATS.other).en)}${(p.images||[]).length ? badge((p.images.length) + ' image(s)') : badge('no image')}</div>
@@ -706,7 +717,7 @@ $('#list').addEventListener('click', e => {
   const card = e.target.closest('.card'); if (!card) return;
   const p = state.props.find(x => x.id === card.dataset.id); if (!p) return;
   const act = e.target.dataset.act;
-  if (act === 'locate') locateOnMap(p); else if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank');
+  if (act === 'locate') locateOnMap(p); else if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank', 'noopener');
   else { openView(p); if (map && p.lat != null) map.setView([p.lat, p.lng], 18); }
 });
 
@@ -734,7 +745,7 @@ function renderMap() {
       ? L.circleMarker([p.lat, p.lng], {radius: 7, color: '#fff', weight: 2, fillColor: st.color, fillOpacity: 1}).addTo(layer)
       : L.marker([p.lat, p.lng], {icon: pinIcon(st.color), title: p.name}).addTo(layer);
     m._pname = p.name;
-    m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br>${esc(p.road || '')}<br><button onclick="openViewById('${esc(p.id)}')">Details</button> ${mapsUrlFor(p) ? `<a href="${esc(mapsUrlFor(p))}" target="_blank">Google Maps</a>` : ''}`);
+    m.bindPopup(`<b>${esc(p.name)}</b><br>${esc(st.en)}<br>${esc(p.road || '')}<br><button data-vid="${esc(p.id)}">Details</button> ${mapsUrlFor(p) ? `<a href="${esc(mapsUrlFor(p))}" target="_blank" rel="noopener noreferrer">Google Maps</a>` : ''}`);
     mapMarkers[p.id] = m; pts.push([p.lat, p.lng]);
   });
   const lg = Object.values(used).map(st => `<span class="lg"><i style="background:${st.color}"></i>${esc(st.en)}</span>`).join('');
@@ -757,6 +768,7 @@ function locateOnMap(p) {
   $('#map').scrollIntoView({behavior: 'smooth', block: 'center'});
   map.setView(m.getLatLng(), Math.max(map.getZoom(), 18)); m.openPopup();
 }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-vid]'); if (b) openViewById(b.dataset.vid); });
 window.openViewById = id => { const p = state.props.find(x => x.id === id); if (p) openView(p); };
 
 /* ============================================================
@@ -765,7 +777,7 @@ window.openViewById = id => { const p = state.props.find(x => x.id === id); if (
 function openView(p) {
   state.viewing = p;
   $('#vTitle').textContent = p.name + (p.name_mr ? ' / ' + p.name_mr : '');
-  const imgs = (p.images || []).map((i, k) => `<figure data-i="${k}"><a href="${esc(i.url)}" target="_blank"><img src="${esc(i.url)}" alt=""></a><figcaption>${esc(i.source || '')}, ${esc(i.date || 'date missing')}${i.caption ? '<br>' + esc(i.caption) : ''}${remote() ? `<br><span class="revchip ${revOf(i)}">${REV[revOf(i)]}</span>` : ''}${isAdmin() ? `<br><button data-ia="approved">Approve</button><button data-ia="rejected">Reject</button><button data-ia="edit">Edit / blur</button>` : ''}</figcaption></figure>`).join('');
+  const imgs = (p.images || []).map((i, k) => `<figure data-i="${k}"><a href="${esc(safeImgUrl(i.url))}" target="_blank" rel="noopener noreferrer"><img src="${esc(safeImgUrl(i.url))}" alt=""></a><figcaption>${esc(i.source || '')}, ${esc(i.date || 'date missing')}${i.caption ? '<br>' + esc(i.caption) : ''}${remote() ? `<br><span class="revchip ${revOf(i)}">${REV[revOf(i)]}</span>` : ''}${isAdmin() ? `<br><button data-ia="approved">Approve</button><button data-ia="rejected">Reject</button><button data-ia="edit">Edit / blur</button>` : ''}</figcaption></figure>`).join('');
   const hist = (p.history || []).slice().reverse().map(h => `<li>${esc(h)}</li>`).join('');
   $('#vBody').innerHTML = `
     <div class="kv">
@@ -819,7 +831,7 @@ function portalPanel(p) {
   return `<details class="portal" ${filed ? '' : ''} style="border:1px solid #d6dbe6;border-radius:8px;padding:8px 10px;margin:12px 0;background:#f8f9fc">
     <summary style="cursor:pointer"><b>PMC complaint portal</b> <span class="hint">(optional, needs your own PMC portal account)</span> ${filed ? '<span class="revchip approved">filed</span>' : ''}</summary>
     <div class="hint" style="margin:4px 0">Category: <b>${esc(pc.cat)}</b><br>Complaint type: <b>${esc(pc.sub)}</b><br>Office: choose the Shivajinagar-Ghole Road Ward Office</div>
-    <div><button data-pt="desc">Copy description</button> <button data-pt="addr">Copy address</button> <button data-pt="land">Copy landmark</button> ${img ? `<a href="${esc(img.url)}" target="_blank" download><button type="button">Open photo (attach 1)</button></a>` : '<span class="hint">No approved photo yet.</span>'}</div>
+    <div><button data-pt="desc">Copy description</button> <button data-pt="addr">Copy address</button> <button data-pt="land">Copy landmark</button> ${img ? `<a href="${esc(safeImgUrl(img.url))}" target="_blank" rel="noopener noreferrer" download><button type="button">Open photo (attach 1)</button></a>` : '<span class="hint">No approved photo yet.</span>'}</div>
     <div style="margin-top:6px"><button data-pt="open">Open portal</button> ${filed ? '<button data-pt="track">Track status on portal</button> ' : ''}<button data-pt="filed">${filed ? 'Update complaint number' : 'I filed it: save the number'}</button></div>
     <div class="hint" style="margin-top:4px">The portal takes one photo (jpg, png or pdf, up to 3 MB) and 2000 characters. Log in with your mobile OTP and paste. Saving the number here sets a reminder for the portal's expected resolution date (about ${PORTAL_DAYS} days).</div>
     <input type="hidden" id="ptAddr" value="${esc(addr)}"></details>`;
@@ -831,8 +843,8 @@ function bindPortal(p) {
     if (k === 'desc') return copy(portalText(p), 'Description copied. Paste it into the portal.');
     if (k === 'addr') return copy($('#ptAddr').value, 'Address copied.');
     if (k === 'land') return copy(`${p.name}, ${p.road || ''}`.replace(/, $/, ''), 'Landmark copied.');
-    if (k === 'open') return void window.open(PORTAL_URL, '_blank');
-    if (k === 'track') { try { await navigator.clipboard.writeText(p.pmc_ref || ''); toast('Complaint number ' + (p.pmc_ref || '') + ' copied. Paste it in Token No. and press Search.', 5000); } catch (e) {} return void window.open(PORTAL_TRACK_URL, '_blank'); }
+    if (k === 'open') return void window.open(PORTAL_URL, '_blank', 'noopener');
+    if (k === 'track') { try { await navigator.clipboard.writeText(p.pmc_ref || ''); toast('Complaint number ' + (p.pmc_ref || '') + ' copied. Paste it in Token No. and press Search.', 5000); } catch (e) {} return void window.open(PORTAL_TRACK_URL, '_blank', 'noopener'); }
     if (k === 'filed') {
       const ref = (prompt('PMC portal complaint number (shown after you submit):', p.pmc_ref || '') || '').trim(); if (!ref) return;
       const np = clone(p), day = todayISO(), who = me() || 'someone', again = portalFiled(p);
@@ -846,7 +858,7 @@ function bindPortal(p) {
 }
 $('#vClose').onclick = () => $('#dlgView').close();
 $('#vEdit').onclick = () => { $('#dlgView').close(); openEdit(state.viewing); };
-$('#vMaps').onclick = () => window.open(mapsUrlFor(state.viewing), '_blank');
+$('#vMaps').onclick = () => window.open(mapsUrlFor(state.viewing), '_blank', 'noopener');
 
 /* ============================================================
    Edit dialog
@@ -870,7 +882,7 @@ function openEdit(p) {
 function renderImgRows() {
   $('#eImages').innerHTML = state.pending.map((im, i) => `
     <div class="imgrow" data-i="${i}">
-      <img src="${esc(im.url || im.dataUrl)}" alt="">
+      <img src="${esc(safeImgUrl(im.url || im.dataUrl))}" alt="">
       <div>
         <div class="g3">
           <div><label>Image date *</label><input type="date" data-f="date" value="${esc(im.date || '')}"></div>
@@ -1078,7 +1090,7 @@ function renderPhotos() {
   const items = photo.items;
   $('#pList').innerHTML = items.map(it => `
     <div class="pcard" data-id="${it.id}">
-      ${it.dataUrl ? `<div><img src="${it.dataUrl}" alt=""><button type="button" data-p="edit" style="margin-top:6px;width:100%">Edit / blur</button></div>` : '<div></div>'}
+      ${it.dataUrl ? `<div><img src="${esc(safeImgUrl(it.dataUrl))}" alt=""><button type="button" data-p="edit" style="margin-top:6px;width:100%">Edit / blur</button></div>` : '<div></div>'}
       <div>
         <div class="g3">
           <div><label>Location (GPS from photo, Maps link, or "lat, lng")</label><input data-p="locText" value="${esc(it.locText)}" placeholder="paste a Google Maps link"></div>
@@ -1233,7 +1245,7 @@ $('#bSave').onclick = async () => {
 };
 
 /* CSV export */
-function csvCell(v) { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function csvCell(v) { v = v == null ? '' : String(v); if (/^[=+@\t\r]|^-(?![\d.]+$)/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 function download(name, content, type) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], {type})); a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
 $('#btnCsv').onclick = () => {
   const cols = ['name','name_mr','road','category','desc_en','desc_mr','lat','lng','maps_url','verification','verification_note','status','complaint_date','pmc_ref','updated_by','updated_at'];
@@ -1431,7 +1443,7 @@ function annexHTML(c) {
     const figs = okImgs(p).map(im => {
       const src = im.source || 'Other', s = SRC[src] || SRC.Other;
       const credit = /google/i.test(src) ? ' © Google. Shown only to identify the location. / © गुगल. केवळ ठिकाण ओळखण्यासाठी.' : '';
-      return `<figure><img src="${esc(im.url)}" alt=""><figcaption>${esc(s.en)} / ${esc(s.mr)}, ${esc(fmtDateEN(im.date) || 'date missing')} / ${esc(fmtDateMR(im.date))}${im.caption ? '. ' + esc(im.caption) : ''}.${credit}</figcaption></figure>`;
+      return `<figure><img src="${esc(safeImgUrl(im.url))}" alt=""><figcaption>${esc(s.en)} / ${esc(s.mr)}, ${esc(fmtDateEN(im.date) || 'date missing')} / ${esc(fmtDateMR(im.date))}${im.caption ? '. ' + esc(im.caption) : ''}.${credit}</figcaption></figure>`;
     }).join('');
     return `<div class="pb"><h4>Annexure ${i + 1} / परिशिष्ट ${mrD(i + 1)}: ${esc(p.name)}${p.name_mr ? ' / ' + esc(p.name_mr) : ''} (${esc(p.road || '-')} / ${esc(roadMr(p.road))})</h4>
       <div>${esc((CATS[p.category] || CATS.other).en)} / ${esc((CATS[p.category] || CATS.other).mr)}</div>
@@ -1620,7 +1632,7 @@ function renderReview() {
   $('#rvBadge').textContent = n; $('#rvBadge').style.display = n && remote() ? '' : 'none';
   box.innerHTML = items.map(({p, im, i}) => `
     <div class="rvcard" data-p="${esc(p.id)}" data-i="${i}">
-      <div><a href="${esc(im.url)}" target="_blank"><img src="${esc(im.url)}" alt=""></a><div class="hint">${esc(im.source || '')}, ${esc(im.date || 'date missing')}</div></div>
+      <div><a href="${esc(safeImgUrl(im.url))}" target="_blank" rel="noopener noreferrer"><img src="${esc(safeImgUrl(im.url))}" alt=""></a><div class="hint">${esc(im.source || '')}, ${esc(im.date || 'date missing')}</div></div>
       <div>
         <b>${esc(p.name)}</b> <span class="hint">(${esc(p.road || 'no road')}, ${esc((CATS[p.category] || CATS.other).en)})</span>
         <label>Observed (English)</label><textarea data-f="desc_en">${esc(p.desc_en || '')}</textarea>
