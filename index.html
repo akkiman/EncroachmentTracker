@@ -142,9 +142,8 @@ dialog::backdrop{background:rgba(20,28,40,.45)}
 /* ===== Brand and public landing ===== */
 :root{--asp:#1c1e22;--asp2:#2a2d33;--conc:#e8e9ea;--chalk:#f7f7f4;--kerb:#f2b705;--sign:#123f8c;--hd:'Barlow Condensed','Noto Sans Devanagari',Impact,sans-serif}
 .kerb{height:10px;background:repeating-linear-gradient(90deg,var(--asp) 0 28px,var(--kerb) 28px 56px)}
-header{border-bottom:0;box-shadow:0 1px 0 var(--line)}header::after{content:'';position:absolute;left:0;right:0;bottom:-10px;height:10px;background:repeating-linear-gradient(90deg,var(--asp) 0 28px,var(--kerb) 28px 56px)}
-header{margin-bottom:10px}
-.bname{font-family:var(--hd);font-size:21px;font-weight:700;letter-spacing:.2px;text-transform:none}
+header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header::after{content:'';position:absolute;left:0;right:0;bottom:-10px;height:10px;background:repeating-linear-gradient(90deg,var(--asp) 0 28px,var(--kerb) 28px 56px)}
+.bname{font-family:var(--hd);font-size:21px;font-weight:700;letter-spacing:.2px}
 .pub header,.pub main{display:none}
 #landing{display:none;background:var(--chalk);color:var(--asp);font-size:16px;line-height:1.55}
 .pub #landing{display:block}
@@ -152,41 +151,55 @@ header{margin-bottom:10px}
 #landing a{color:inherit}
 #landing :focus-visible{outline:3px solid var(--kerb);outline-offset:3px}
 .lp-wrap{max-width:1160px;margin:0 auto;padding:0 24px}
-.lp-nav{position:sticky;top:0;z-index:50;background:var(--asp);color:#fff}
-.lp-nav .lp-wrap{display:flex;align-items:center;gap:22px;height:64px}
-.lp-nav .brand{color:#fff}.lp-nav .bname small{color:#aab0bb}
+.lp-nav{position:fixed;top:0;left:0;right:0;z-index:60;background:transparent;color:#fff;transition:background .25s,box-shadow .25s}
+.lp-nav.solid{background:rgba(28,30,34,.96);box-shadow:0 1px 0 rgba(255,255,255,.08)}
+.lp-nav .lp-wrap{display:flex;align-items:center;gap:22px;height:66px}
+.lp-nav .brand{color:#fff}.lp-nav .bname small{color:#c9cdd5}
 .lp-nav nav{display:flex;gap:4px;margin-left:auto;align-items:center}
-.lp-nav nav a{padding:8px 12px;border-radius:8px;text-decoration:none;font-size:14px;color:#d8dbe1}
-.lp-nav nav a:hover{background:var(--asp2);color:#fff}
-.lp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:2px solid var(--kerb);background:var(--kerb);color:var(--asp)!important;font:700 15px/1 'Public Sans',sans-serif;padding:13px 20px;border-radius:6px;text-decoration:none;cursor:pointer}
+.lp-nav nav a{padding:8px 12px;border-radius:8px;text-decoration:none;font-size:14px;color:#eceef2}
+.lp-nav nav a:hover{background:rgba(255,255,255,.12)}
+.lp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:2px solid var(--kerb);background:var(--kerb);color:var(--asp)!important;font:700 15px/1 'Public Sans',sans-serif;padding:14px 22px;border-radius:6px;text-decoration:none;cursor:pointer}
 .lp-btn:hover{background:#ffcb2e;border-color:#ffcb2e}
-.lp-btn.ghost{background:transparent;color:#fff!important;border-color:#5b616c}.lp-btn.ghost:hover{border-color:#fff;background:transparent}
+.lp-btn.ghost{background:rgba(0,0,0,.25);color:#fff!important;border-color:rgba(255,255,255,.55)}.lp-btn.ghost:hover{border-color:#fff;background:rgba(0,0,0,.4)}
 .lp-nav .lp-btn{padding:9px 16px;font-size:14px}
-.lp-hero{background:var(--asp);color:#fff;padding:56px 0 64px}
-.lp-hero .lp-wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:48px;align-items:center}
-.lp-hero h1{font-size:clamp(46px,6.4vw,84px);text-transform:none}
-.lp-mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:22px;font-weight:600;color:var(--kerb);margin:14px 0 0}
-.lp-hero p.lead{font-size:18px;color:#d3d7de;max-width:46ch;margin:18px 0 26px}
+/* hero: the slider is the whole screen */
+.lp-hero{position:relative;min-height:100vh;min-height:100svh;background:var(--asp);color:#fff;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.ba{position:absolute;inset:0;--p:0%;user-select:none;touch-action:pan-y}
+.ba-layer{position:absolute;inset:0;background:#3a3e46}.ba-layer svg,.ba-layer img{width:100%;height:100%;object-fit:cover;object-position:50% 60%;display:block}
+.ba-after{clip-path:inset(0 calc(100% - var(--p)) 0 0)}
+.ba-shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(14,15,18,.78) 0%,rgba(14,15,18,.45) 38%,rgba(14,15,18,0) 66%),linear-gradient(0deg,rgba(14,15,18,.7) 0%,rgba(14,15,18,0) 36%),linear-gradient(180deg,rgba(14,15,18,.55) 0%,rgba(14,15,18,0) 18%)}
+.ba-bar{position:absolute;top:0;bottom:0;left:var(--p);width:4px;margin-left:-2px;background:var(--kerb);pointer-events:none;box-shadow:0 0 24px rgba(242,183,5,.6)}
+.ba-knob{position:absolute;top:58%;left:var(--p);width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:var(--kerb);color:var(--asp);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0;z-index:3}
+.ba input:focus-visible~.ba-knob{outline:3px solid #fff}
+.lp-hero>.lp-wrap{width:100%}.lp-herotxt{position:relative;z-index:2;pointer-events:none;padding-bottom:20px}
+.lp-herotxt>*{pointer-events:auto}
+.lp-hero h1{font-size:clamp(54px,9vw,128px);line-height:.94;max-width:11ch;text-shadow:0 3px 30px rgba(0,0,0,.45)}
+.lp-mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:clamp(20px,2.4vw,28px);font-weight:600;color:var(--kerb);margin:14px 0 0}
+.lp-hero p.lead{font-size:clamp(16px,1.6vw,20px);color:#f0f1f4;max-width:44ch;margin:16px 0 26px;text-shadow:0 1px 14px rgba(0,0,0,.5)}
 .lp-cta{display:flex;flex-wrap:wrap;gap:12px}
-.lp-fine{font-size:13px;color:#9aa1ad;margin-top:20px;max-width:46ch}
-.ba{position:relative;aspect-ratio:16/10;border-radius:10px;overflow:hidden;background:#3a3e46;--p:50%;user-select:none;touch-action:pan-y;box-shadow:0 0 0 2px #3a3e46}
-.ba-layer{position:absolute;inset:0}.ba-layer svg,.ba-layer img{width:100%;height:100%;object-fit:cover;display:block}
-.ba-before{clip-path:inset(0 calc(100% - var(--p)) 0 0)}
-.ba-bar{position:absolute;top:0;bottom:0;left:var(--p);width:4px;margin-left:-2px;background:var(--kerb);pointer-events:none}
-.ba-knob{position:absolute;top:50%;left:var(--p);width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--kerb);color:var(--asp);display:flex;align-items:center;justify-content:center;font-weight:700;pointer-events:none;box-shadow:0 2px 10px rgba(0,0,0,.4)}
-.ba input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
-.ba input:focus-visible+.ba-knob{outline:3px solid #fff}
-.ba-tag{position:absolute;top:12px;padding:5px 10px;border-radius:5px;background:rgba(28,30,34,.82);color:#fff;font-size:12px;font-weight:600;pointer-events:none}
-.ba-tag.l{left:12px}.ba-tag.r{right:12px}
-.ba-cap{font-size:12px;color:#9aa1ad;margin-top:8px}
+.ba-hint{position:absolute;z-index:2;right:6%;bottom:16%;background:rgba(28,30,34,.82);border:1px solid rgba(255,255,255,.25);padding:9px 16px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;pointer-events:none;transition:opacity .4s}
+.ba-hint span{color:var(--kerb);margin:0 6px}.ba-hint.gone{opacity:0}
+.lp-fine{position:relative;z-index:2;font-size:12px;color:#c9cdd5;margin:0 auto 18px;max-width:1160px}
+/* story: sticky picture that changes as you scroll */
+.lp-story{background:var(--chalk);padding:84px 0 40px}
+.lp-storyhead h2{font-size:clamp(36px,5vw,64px);max-width:16ch}
+.lp-story .sub,.lp-sec .sub{font-size:18px;color:#424954;max-width:56ch;margin:14px 0 0}
+.lp-storygrid{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:56px;margin-top:40px;align-items:start}
+.lp-stack{position:sticky;top:92px;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--asp);box-shadow:0 30px 60px -30px rgba(0,0,0,.55)}
+.sp{position:absolute;inset:0;opacity:0;transition:opacity .6s ease;background:var(--asp) center/cover no-repeat}
+.sp.on{opacity:1}
+.sp-fb{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#23262b,#34383f);color:#fff}
+.sp-fb b{font-family:var(--hd);font-size:150px;line-height:1;color:var(--kerb)}.sp-fb span{font-family:var(--hd);font-size:34px}
+.sp.has .sp-fb{display:none}
+.sp.has::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(14,15,18,.35),rgba(14,15,18,0) 40%)}
+.lp-steps2{padding:6vh 0 18vh}
+.sx{min-height:62vh;display:flex;flex-direction:column;justify-content:center;opacity:.38;transition:opacity .4s;border-left:6px solid #cfd2d8;padding-left:24px}
+.sx.on{opacity:1;border-left-color:var(--kerb)}
+.sx .n{font-family:var(--hd);font-size:64px;font-weight:700;line-height:1}
+#landing .sx h3{font-size:clamp(34px,4vw,48px);margin:6px 0 10px}.sx p{margin:0;color:#424954;font-size:18px;max-width:40ch}
 .lp-sec{padding:84px 0}
-.lp-sec h2{font-size:clamp(34px,4.4vw,54px);max-width:18ch}
-.lp-sec .sub{font-size:18px;color:#424954;max-width:56ch;margin:14px 0 0}
-.lp-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:44px;border-top:3px solid var(--asp)}
-.lp-step{padding:22px 22px 8px 0;position:relative}
-.lp-step+.lp-step{padding-left:22px;border-left:1px solid #cfd2d8}
-.lp-step .n{font-family:var(--hd);font-size:46px;font-weight:700;line-height:1;color:var(--asp)}
-#landing .lp-step h3{font-size:26px;margin:10px 0 8px}.lp-step p{margin:0;color:#424954;font-size:15px}
+.lp-sec h2{font-size:clamp(34px,4.6vw,58px);max-width:18ch}
 .lp-prod{background:var(--conc)}
 .lp-prodgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;margin-top:40px;align-items:start}
 .paper{background:#fff;border:1px solid #cfd2d8;border-radius:6px;padding:20px 22px;box-shadow:0 14px 30px -18px rgba(0,0,0,.35)}
@@ -194,44 +207,47 @@ header{margin-bottom:10px}
 .mock-card{display:grid;grid-template-columns:120px 1fr;gap:16px}
 .mock-photo{aspect-ratio:1/1;border-radius:4px;background:repeating-linear-gradient(135deg,#d8dbe0 0 10px,#e5e7eb 10px 20px);display:flex;align-items:flex-end;padding:6px;font-size:11px;color:#6b7280}
 .chip{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;color:#fff}
-.mock-card b{font-size:16px}.mock-card .m{color:#6b7280;font-size:13px;margin:2px 0 8px}
-.mock-card p{margin:8px 0 0;font-size:14px}
-.letter .ln{height:8px;border-radius:4px;background:#e3e5e9;margin:9px 0}
-.letter .ln.s{width:62%}.letter .ln.m{width:84%}
-.letter .mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;color:#2b3442;margin:6px 0}
-.letter .to{font-size:13px;color:#2b3442;margin:0 0 8px}
+.mock-card b{font-size:16px}.mock-card .m{color:#6b7280;font-size:13px;margin:2px 0 8px}.mock-card p{margin:8px 0 0;font-size:14px}
+.letter .ln{height:8px;border-radius:4px;background:#e3e5e9;margin:9px 0}.letter .ln.s{width:62%}.letter .ln.m{width:84%}
+.letter .mr{font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;color:#2b3442;margin:6px 0}.letter .to{font-size:13px;color:#2b3442;margin:0 0 8px}
+.lp-dark{background:var(--asp);color:#fff}.lp-dark .sub{color:#c4c9d2}
+.roadcards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.rcard{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:linear-gradient(160deg,#2f343b,#1c1e22);display:flex;align-items:flex-end;padding:18px;background-size:cover;background-position:center;transition:transform .5s}
+.rcard::before{content:'';position:absolute;left:0;right:0;top:0;height:8px;background:repeating-linear-gradient(90deg,var(--asp) 0 22px,var(--kerb) 22px 44px);z-index:2}
+.rcard.has::after{content:'';position:absolute;inset:0;background:linear-gradient(0deg,rgba(14,15,18,.8),rgba(14,15,18,0) 55%)}
+.rcard:not(.more):hover{transform:translateY(-6px)}
+.rslide{position:absolute;inset:0;background:center/cover no-repeat;opacity:0;transition:opacity 1.2s ease}.rslide.on{opacity:1}
+.rcard .plate{padding:7px 13px;border-width:2px;outline-width:2px;border-radius:6px}.rcard .plate b{font-size:24px}.rcard .plate span{font-size:13px}.rcard{aspect-ratio:4/3}
+.rcard.more{background:transparent;border:2px dashed #5b616c;align-items:center;justify-content:center}.rcard.more::before{display:none}
+.plate{position:relative;z-index:2;background:var(--sign);color:#fff;border:3px solid #fff;outline:3px solid var(--sign);border-radius:8px;padding:10px 18px;display:flex;flex-direction:column}
+.plate b{font-family:var(--hd);font-size:32px;line-height:1.05;letter-spacing:.3px}.plate span{font-family:'Noto Sans Devanagari',sans-serif;font-size:15px;opacity:.9}
+.plate.more{background:transparent;border:0;outline:0;color:#c4c9d2;padding:0;text-align:center}
 .lp-rules{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:0 48px}
 .lp-rule{border-left:6px solid var(--kerb);padding:4px 0 4px 18px;margin:0 0 26px}
-#landing .lp-rule h3{font-size:26px;margin:0 0 6px}.lp-rule p{margin:0;color:#424954;font-size:15px}
-.lp-dark{background:var(--asp);color:#fff}
-.lp-dark .sub{color:#c4c9d2}
-.plates{display:flex;flex-wrap:wrap;gap:14px;margin-top:30px}
-.plate{background:var(--sign);color:#fff;border:3px solid #fff;outline:3px solid var(--sign);border-radius:8px;padding:12px 22px;display:flex;flex-direction:column;min-width:200px}
-.plate b{font-family:var(--hd);font-size:34px;line-height:1.05;letter-spacing:.3px}.plate span{font-family:'Noto Sans Devanagari',sans-serif;font-size:16px;opacity:.9}
-.plate.more{background:transparent;border-style:dashed;border-color:#5b616c;outline:0;color:#c4c9d2}
-.lp-band{position:relative;background:var(--asp) center/cover no-repeat;color:#fff;padding:90px 0}
-.lp-band.has::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(28,30,34,.92),rgba(28,30,34,.55))}
-.lp-band .lp-wrap{position:relative}
-.lp-band h2{max-width:16ch}
+#landing .lp-rule h3{font-size:28px;margin:0 0 6px}.lp-rule p{margin:0;color:#424954;font-size:15px}
+.lp-band{position:relative;background:var(--asp) center/cover no-repeat;color:#fff;padding:140px 0;overflow:hidden}
+.lp-band .bgimg{position:absolute;left:0;right:0;top:-12%;bottom:-12%;background:center/cover no-repeat;will-change:transform}
+.lp-band.has::before{content:'';position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(28,30,34,.92),rgba(28,30,34,.35))}
+.lp-band .lp-wrap{position:relative;z-index:2}.lp-band h2{font-size:clamp(40px,6vw,78px);max-width:14ch}
 .lp-faq{max-width:760px;margin-top:30px}
 .lp-faq details{border-top:1px solid #cfd2d8;padding:16px 0}.lp-faq details:last-child{border-bottom:1px solid #cfd2d8}
 .lp-faq summary{cursor:pointer;font-weight:600;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:16px}
 .lp-faq summary::after{content:'+';font-weight:700;font-size:22px;line-height:1}.lp-faq details[open] summary::after{content:'\2212'}
-.lp-faq summary::-webkit-details-marker{display:none}
-.lp-faq p{margin:10px 0 0;color:#424954;max-width:62ch}
+.lp-faq summary::-webkit-details-marker{display:none}.lp-faq p{margin:10px 0 0;color:#424954;max-width:62ch}
 .lp-foot{background:var(--asp);color:#c4c9d2;padding:36px 0 44px;font-size:13px}
 .lp-foot .lp-wrap{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start}
-.lp-foot .brand{color:#fff;margin-bottom:12px}.lp-foot .bname small{color:#aab0bb}
-.lp-foot p{margin:0 0 6px;max-width:64ch}
+.lp-foot .brand{color:#fff;margin-bottom:12px}.lp-foot .bname small{color:#aab0bb}.lp-foot p{margin:0 0 6px;max-width:64ch}
 .lp-foot button.alink{color:#fff;font-size:13px;margin:0}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
 @media (max-width:900px){
-  .lp-hero .lp-wrap{grid-template-columns:1fr;gap:30px}.lp-hero{padding:36px 0 44px}
-  .lp-steps{grid-template-columns:1fr 1fr}.lp-step:nth-child(3){padding-left:0;border-left:0}.lp-step{padding-bottom:20px}
-  .lp-prodgrid,.lp-rules{grid-template-columns:1fr}
-  .lp-nav nav a.hide-s{display:none}.lp-sec{padding:60px 0}
+  .lp-storygrid{grid-template-columns:1fr;gap:0}.lp-stack{top:66px;z-index:5;aspect-ratio:16/10;border-radius:0 0 12px 12px;margin:0 -24px}
+  .lp-steps2{padding:0 0 10vh}.sx{min-height:46vh}
+  .lp-prodgrid,.lp-rules{grid-template-columns:1fr}.roadcards{grid-template-columns:1fr}.rcard{aspect-ratio:16/10}
+  .lp-nav nav a.hide-s{display:none}.lp-sec{padding:60px 0}.lp-band{padding:90px 0}.ba-hint{right:auto;left:50%;transform:translateX(-50%);bottom:auto;top:84px}
 }
-@media (max-width:560px){.lp-steps{grid-template-columns:1fr}.lp-step+.lp-step{padding-left:0;border-left:0;border-top:1px solid #cfd2d8}.lp-step{padding-right:0}.lp-foot .lp-wrap{grid-template-columns:1fr}.lp-nav .lp-wrap{gap:10px;padding:0 14px}.lp-nav .bname small{display:none}.mock-card{grid-template-columns:84px 1fr}}
-@media (prefers-reduced-motion:no-preference){.lp-hero h1{animation:lpin .7s ease-out both}@keyframes lpin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}}
+@media (max-width:560px){.lp-foot .lp-wrap{grid-template-columns:1fr}.lp-nav .lp-wrap{gap:10px;padding:0 14px}.lp-nav .bname small{display:none}.mock-card{grid-template-columns:84px 1fr}.sp-fb b{font-size:90px}}
+@media (prefers-reduced-motion:reduce){.sp,.sx,.rcard{transition:none}}
+/* login popup */
 #authHero{background:var(--asp)!important}
 #authHero::before{content:'';position:absolute;left:0;right:0;bottom:0;height:8px;background:repeating-linear-gradient(90deg,var(--asp) 0 22px,var(--kerb) 22px 44px);z-index:2}
 #authHero .ttl{font-family:var(--hd);font-size:30px}#authHero .ttl small{font-family:'Public Sans',sans-serif}
@@ -241,46 +257,43 @@ header{margin-bottom:10px}
 <body>
 
 <div id="landing">
-  <div class="lp-nav"><div class="lp-wrap">
+  <div class="lp-nav" id="lpNav"><div class="lp-wrap">
     <a class="brand" href="#top" aria-label="Footpath Watch home"><span class="logo"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#1c1e22"/><path d="M12 56 L25 34 H39 L52 56 Z" fill="#fff" opacity=".14"/><path d="M26 56 L30 40 M38 56 L34 40" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".6"/><path d="M32 7c-7.4 0-12.400 5.400-12.400 12 0 8.500 12.400 22 12.400 22s12.400-13.500 12.400-22C44.400 12.400 39.400 7 32 7z" fill="#f2b705"/><circle cx="32" cy="19.500" r="4.700" fill="#1c1e22"/></svg></span><span class="bname">Footpath Watch<small>Pune</small></span></a>
-    <nav aria-label="Main"><a class="hide-s" href="#how">How it works</a><a class="hide-s" href="#product">What you get</a><a class="hide-s" href="#rules">Ground rules</a><a class="hide-s" href="#faq">Questions</a><button class="lp-btn" id="lpLogin1">Member login</button></nav>
+    <nav aria-label="Main"><a class="hide-s" href="#how">How it works</a><a class="hide-s" href="#product">What you get</a><a class="hide-s" href="#roads">Roads</a><a class="hide-s" href="#faq">Questions</a><button class="lp-btn" id="lpLogin1">Member login</button></nav>
   </div></div>
 
-  <section class="lp-hero" id="top"><div class="lp-wrap">
-    <div>
-      <h1>Footpaths are for walking.</h1>
-      <p class="lp-mr">पदपथ चालण्यासाठी आहेत.</p>
-      <p class="lead">Footpath Watch helps Pune residents photograph encroachments, pin them on a map and send PMC a clear letter in English and Marathi. It then keeps track of what has been answered and what has not.</p>
-      <div class="lp-cta"><button class="lp-btn" id="lpLogin2">Member login</button><a class="lp-btn ghost" href="#how">See how it works</a></div>
-      <p class="lp-fine">A Citizens of Pune project. This is not a government service and it is not connected to PMC.</p>
-    </div>
-    <div>
-      <div class="ba" id="ba" style="--p:50%">
-        <div class="ba-layer" id="baAfter"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The same footpath, clear"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/></svg></div>
-        <div class="ba-layer ba-before" id="baBefore"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A footpath blocked by a stall, boxes and a parked bike"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/><g><rect x="70" y="270" width="150" height="14" rx="3" fill="#8b5a2b"/><rect x="82" y="284" width="8" height="46" fill="#6d4522"/><rect x="200" y="284" width="8" height="46" fill="#6d4522"/>
+  <section class="lp-hero" id="top">
+    <div class="ba" id="ba" style="--p:0%">
+      <div class="ba-layer" id="baBefore"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="The same footpath, clear"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/></svg></div>
+      <div class="ba-layer ba-after" id="baAfter"><svg viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" role="img" aria-label="A footpath blocked by a stall, boxes and a parked bike"><rect width="800" height="500" fill="#c9d3dd"/><rect y="150" width="800" height="120" fill="#b7bfc9"/><rect x="40" y="70" width="150" height="200" fill="#9aa5b1"/><rect x="230" y="40" width="190" height="230" fill="#aab3be"/><rect x="470" y="90" width="120" height="180" fill="#9aa5b1"/><rect x="620" y="60" width="150" height="210" fill="#aab3be"/><rect y="270" width="800" height="230" fill="#8d9199"/><rect y="270" width="800" height="150" fill="#cfd1d4"/><rect y="420" width="800" height="14" fill="repeating-linear-gradient(90deg,#1c1e22 0 28px,#f2b705 28px 56px)"/><path d="M0 420H800" stroke="#1c1e22" stroke-width="14" stroke-dasharray="28 28"/><path d="M28 420H800" stroke="#f2b705" stroke-width="14" stroke-dasharray="28 28"/><rect y="434" width="800" height="66" fill="#4a4e56"/><g><rect x="70" y="270" width="150" height="14" rx="3" fill="#8b5a2b"/><rect x="82" y="284" width="8" height="46" fill="#6d4522"/><rect x="200" y="284" width="8" height="46" fill="#6d4522"/>
 <path d="M60 262 L150 214 L240 262 Z" fill="#c8372d"/><path d="M60 262 H240" stroke="#8d241d" stroke-width="4"/>
 <rect x="300" y="300" width="70" height="46" fill="#c58f4f"/><rect x="316" y="268" width="60" height="38" fill="#d9a665"/><rect x="380" y="316" width="56" height="34" fill="#b3763a"/>
 <circle cx="520" cy="352" r="22" fill="none" stroke="#222" stroke-width="5"/><circle cx="600" cy="352" r="22" fill="none" stroke="#222" stroke-width="5"/><path d="M520 352 L550 318 L600 352 M550 318 H575" stroke="#222" stroke-width="5" fill="none"/></g></svg></div>
-        <span class="ba-tag l">Blocked</span><span class="ba-tag r">Clear</span>
-        <div class="ba-bar"></div>
-        <input type="range" min="0" max="100" value="50" id="baRange" aria-label="Drag to compare a blocked footpath with a clear one">
-        <div class="ba-knob" aria-hidden="true">&#8596;</div>
-      </div>
-      <p class="ba-cap">Drag to clear the footpath. Illustrative images.</p>
+      <div class="ba-shade"></div>
+      <div class="ba-bar"></div>
+      <input type="range" min="0" max="100" value="0" id="baRange" aria-label="Drag to clear the footpath">
+      <div class="ba-knob" aria-hidden="true">&#8596;</div>
     </div>
-  </div></section>
+    <div class="lp-wrap lp-herotxt">
+      <h1>Footpaths are for walking.</h1>
+      <p class="lp-mr">पदपथ चालण्यासाठी आहेत.</p>
+      <p class="lead">Photograph it. Pin it. Send PMC a clear letter in English and Marathi, then follow it up until the footpath is clear.</p>
+      <div class="lp-cta"><button class="lp-btn" id="lpLogin2">Member login</button><a class="lp-btn ghost" href="#how">See how it works</a></div>
+    </div>
+    <div class="ba-hint" id="baHint"><span>&#8592;</span> Drag to clear the footpath <span>&#8594;</span></div>
+    <p class="lp-fine lp-wrap">A Citizens of Pune project. Not a government service, not connected to PMC. Illustrative images.</p>
+  </section>
   <div class="kerb"></div>
 
-  <section class="lp-sec" id="how"><div class="lp-wrap">
-    <h2>From a photo to a letter, then to a result.</h2>
-    <p class="sub">Four steps, the same every time, so nothing depends on one person remembering.</p>
-    <div class="lp-steps">
-      <div class="lp-step"><div class="n">1</div><h3>Photograph</h3><p>Take a photo from the road or footpath. If location is on, the pin is placed for you.</p></div>
-      <div class="lp-step"><div class="n">2</div><h3>Check</h3><p>The AI suggests a description and a category. You correct it, and an admin approves the photo.</p></div>
-      <div class="lp-step"><div class="n">3</div><h3>Send</h3><p>Pick the entries and get one letter for the Shivajinagar-Ghole Road Ward Office. File on the PMC portal too if you have an account.</p></div>
-      <div class="lp-step"><div class="n">4</div><h3>Follow up</h3><p>Reminders show when a complaint has gone quiet. Admins get a list every Monday.</p></div>
+  <section class="lp-story" id="how">
+    <div class="lp-wrap">
+      <div class="lp-storyhead"><h2>From one photo to a clear footpath.</h2><p class="sub">The same four steps every time, so nothing depends on one person remembering.</p></div>
+      <div class="lp-storygrid">
+        <div class="lp-stack" id="spStack"><div class="sp on" data-src="story-1-photo.jpg"><div class="sp-fb"><b>1</b><span>Photograph</span></div></div><div class="sp" data-src="story-2-map.jpg"><div class="sp-fb"><b>2</b><span>Check</span></div></div><div class="sp" data-src="story-3-letter.jpg"><div class="sp-fb"><b>3</b><span>Send</span></div></div><div class="sp" data-src="story-4-clear.jpg"><div class="sp-fb"><b>4</b><span>Follow up</span></div></div></div>
+        <div class="lp-steps2"><div class="sx on" data-i="0"><div class="n">1</div><h3>Photograph</h3><p>Take a photo from the road or the footpath. If location is on, the pin is placed for you.</p></div><div class="sx" data-i="1"><div class="n">2</div><h3>Check</h3><p>The AI suggests a description and a category. You correct it, and an admin approves the photo.</p></div><div class="sx" data-i="2"><div class="n">3</div><h3>Send</h3><p>Pick the entries and get one letter for the Shivajinagar-Ghole Road Ward Office, in English and Marathi. File on the PMC portal too if you have an account.</p></div><div class="sx" data-i="3"><div class="n">4</div><h3>Follow up</h3><p>Reminders show when a complaint has gone quiet. Admins get a list every Monday, until the footpath is clear.</p></div></div>
+      </div>
     </div>
-  </div></section>
+  </section>
 
   <section class="lp-sec lp-prod" id="product"><div class="lp-wrap">
     <h2>Everything on one page, in two languages.</h2>
@@ -304,6 +317,17 @@ header{margin-bottom:10px}
     </div>
   </div></section>
 
+  <section class="lp-sec lp-dark" id="roads"><div class="lp-wrap">
+    <h2>Where we are watching.</h2>
+    <p class="sub">We started around Deccan Gymkhana. New roads are added when members ask. Want yours on the list? Ask a project admin.</p>
+    <div class="roadcards">
+      <div class="rcard" data-src="road-prabhat.jpg,road-prabhat-2.jpg"><div class="plate"><b>Prabhat Road</b><span>प्रभात रोड</span></div></div>
+      <div class="rcard" data-src="road-bhandarkar.jpg"><div class="plate"><b>Bhandarkar Road</b><span>भांडारकर रोड</span></div></div>
+      <div class="rcard" data-src="road-knp.jpg"><div class="plate"><b>Kamla Nehru Park</b><span>कमला नेहरू पार्क रस्ता</span></div></div>
+    </div>
+    <p class="lp-fine" style="margin:14px 0 0;color:#9aa1ad">Road photographs taken by members of the project.</p>
+  </div></section>
+
   <section class="lp-sec" id="rules"><div class="lp-wrap">
     <h2>How we report.</h2>
     <p class="sub">A complaint is stronger when it is calm, accurate and easy to check.</p>
@@ -315,15 +339,9 @@ header{margin-bottom:10px}
     </div>
   </div></section>
 
-  <section class="lp-sec lp-dark" id="roads"><div class="lp-wrap">
-    <h2>Where we are watching.</h2>
-    <p class="sub">We started around Deccan Gymkhana. New roads are added when members ask.</p>
-    <div class="plates"><div class="plate"><b>Prabhat Road</b><span>प्रभात रोड</span></div><div class="plate"><b>Bhandarkar Road</b><span>भांडारकर रोड</span></div><div class="plate more"><b>Your road?</b><span>Ask a project admin</span></div></div>
-  </div></section>
-
   <section class="lp-band" id="joinband"><div class="lp-wrap">
     <h2>Help keep one road clear.</h2>
-    <p class="sub" style="color:#d3d7de;font-size:18px;max-width:46ch;margin:14px 0 24px">Ask for access with your name and email. An admin approves you and you can start the same day.</p>
+    <p class="sub" style="color:#e1e4ea;font-size:18px;max-width:46ch;margin:14px 0 24px">Ask for access with your name and email. An admin approves you and you can start the same day.</p>
     <button class="lp-btn" id="lpJoin">Request access</button>
   </div></section>
 
@@ -2011,11 +2029,42 @@ function initHelp() {
   $('#agClose').onclick = () => { gateWanted = false; $('#authGate').classList.add('off'); };
   ['lpLogin1', 'lpLogin2'].forEach(id => { $('#' + id).onclick = () => openGate('1'); });
   $('#lpJoin').onclick = () => openGate('Req');
-  const range = $('#baRange'); const setP = () => $('#ba').style.setProperty('--p', range.value + '%');
-  range.addEventListener('input', setP); setP();
+  // ----- hero slider -----
+  const ba = $('#ba'), range = $('#baRange'), hint = $('#baHint');
+  const setP = v => ba.style.setProperty('--p', v + '%');
+  let touched = false;
+  range.addEventListener('input', () => { touched = true; hint.classList.add('gone'); setP(range.value); });
   const tryLayer = (src, sel) => { const i = new Image(); i.onload = () => { $(sel).innerHTML = ''; $(sel).appendChild(i); }; i.alt = ''; i.src = src; };
   tryLayer('hero-before.jpg', '#baBefore'); tryLayer('hero-after.jpg', '#baAfter');
-  tryImg('band.jpg', s => { const b = $('#joinband'); b.style.backgroundImage = 'url(' + s + ')'; b.classList.add('has'); });
+  // one opening move: the footpath clears itself from the left, then the visitor takes over
+  const sweep = () => {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { range.value = 60; setP(60); return; }
+    const t0 = performance.now(), dur = 2600, to = 60;
+    const step = now => { if (touched) return; const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); range.value = to * e; setP(to * e); if (k < 1) requestAnimationFrame(step); };
+    setTimeout(() => requestAnimationFrame(step), 700);
+  };
+  sweep();
+  // ----- nav turns solid after the hero -----
+  const nav = $('#lpNav'); const onScroll = () => { nav.classList.toggle('solid', window.scrollY > 40); };
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  // ----- story: pictures follow the steps -----
+  const sps = [...document.querySelectorAll('#spStack .sp')], sxs = [...document.querySelectorAll('.sx')];
+  sps.forEach(sp => { const i = new Image(); i.onload = () => { sp.style.backgroundImage = 'url(' + sp.dataset.src + ')'; sp.classList.add('has'); }; i.src = sp.dataset.src; });
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(es => es.forEach(en => { if (en.isIntersecting) { const k = +en.target.dataset.i; sxs.forEach((x, j) => x.classList.toggle('on', j === k)); sps.forEach((x, j) => x.classList.toggle('on', j === k)); } }), { rootMargin: '-42% 0px -42% 0px' });
+    sxs.forEach(x => io.observe(x));
+  }
+  // ----- road cards -----
+  document.querySelectorAll('.rcard[data-src]').forEach(r => {
+    const list = r.dataset.src.split(','), slides = [];
+    list.forEach((src, k) => { const i = new Image(); i.onload = () => { const d = document.createElement('div'); d.className = 'rslide'; d.style.backgroundImage = 'url(' + src + ')'; r.insertBefore(d, r.firstChild); slides[k] = d; r.classList.add('has'); if (!r.querySelector('.rslide.on')) d.classList.add('on'); }; i.src = src; });
+    if (list.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) { let n = 0; setInterval(() => { const s = slides.filter(Boolean); if (s.length < 2) return; s.forEach(x => x.classList.remove('on')); n = (n + 1) % s.length; s[n].classList.add('on'); }, 5000); }
+  });
+  // ----- band with slow parallax -----
+  tryImg('band.jpg', s => {
+    const b = $('#joinband'); const d = document.createElement('div'); d.className = 'bgimg'; d.style.backgroundImage = 'url(' + s + ')'; b.insertBefore(d, b.firstChild); b.classList.add('has');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) { const mv = () => { const r = b.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return; d.style.transform = 'translateY(' + ((r.top + r.height / 2 - innerHeight / 2) * -0.12) + 'px)'; }; window.addEventListener('scroll', mv, { passive: true }); mv(); }
+  });
   $('#abClose').onclick = () => $('#dlgAbout').close();
   $('#helpBody').addEventListener('click', e => {
     const a = e.target.closest && e.target.closest('.tocl a'); if (!a) return;
