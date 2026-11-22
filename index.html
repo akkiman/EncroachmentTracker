@@ -455,8 +455,10 @@ header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header:
       <div id="mapNote" class="hint" style="margin:0 0 6px"></div>
       <div id="map"></div>
     </div>
-    <div id="pkBar" class="followbox" style="display:none;margin-bottom:8px"></div>
-    <div id="list"></div>
+    <div>
+      <div id="pkBar" class="followbox" style="display:none;margin-bottom:8px"></div>
+      <div id="list"></div>
+    </div>
   </div>
 </section>
 
@@ -1271,10 +1273,9 @@ function renderPkBar() {
   const picked = state.props.filter(p => state.pk.has(p.id) && shown.has(p.id));
   const nonFood = picked.filter(p => p.category !== 'food').length, food = picked.length - nonFood;
   bar.style.display = '';
-  bar.innerHTML = `<b>Bulk actions:</b> <button type="button" id="pkAll">Select all shown (${shown.size})</button> <button type="button" id="pkNone">Clear</button> <span class="hint">${picked.length} selected</span>
-    ${nonFood ? `<button type="button" id="pkFda" class="primary">Add FDA report for ${nonFood} selected</button>` : ''}
-    ${food ? `<button type="button" id="pkPmc" class="primary">Add PMC (footpath) report for ${food} selected</button>` : ''}
-    ${picked.length ? '<span class="hint">Creates separate drafts for review. Existing entries are not changed, and places that already have one are skipped.</span>' : '<span class="hint">Tick entries in the list to add FDA or PMC reports for many places at once.</span>'}`;
+  bar.innerHTML = `<b>Bulk:</b> <button type="button" id="pkAll">Select all shown (${shown.size})</button>${picked.length ? ' <button type="button" id="pkNone">Clear</button> <span class="hint">' + picked.length + ' selected</span>' : ' <span class="hint">or tick entries below</span>'}
+    ${nonFood ? `<button type="button" id="pkFda" class="primary" title="Creates a separate FDA draft for each place. Existing entries are not changed and places that already have one are skipped.">Add FDA report (${nonFood})</button>` : ''}
+    ${food ? `<button type="button" id="pkPmc" class="primary" title="Creates a separate PMC (footpath) draft for each place. Existing entries are not changed and places that already have one are skipped.">Add PMC report (${food})</button>` : ''}`;
 }
 async function bulkCounterpart(cat) {
   const shown = new Set(filtered().map(p => p.id));
