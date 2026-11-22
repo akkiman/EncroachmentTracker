@@ -47,7 +47,8 @@ nav button.on{background:#eef3ff;color:var(--brand);font-weight:600}
 #sync{margin-left:auto;font-size:12px;color:var(--mute)}
 #authGate{position:fixed;inset:0;z-index:5000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px}#authGate.off{display:none}.authbox{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;max-width:400px;width:100%}.authbox h2{margin:0 0 6px;font-size:18px}.authbox button{margin-top:12px;margin-right:6px}
 .rvcard{display:grid;grid-template-columns:220px 1fr;gap:12px;border:1px solid var(--line);border-radius:10px;padding:10px;margin:10px 0;background:#fff}
-.rvcard img{width:100%;border-radius:8px;display:block}
+.rvcard img{width:100%;aspect-ratio:4/3;object-fit:contain;background:#eef0f4;border-radius:8px;display:block}
+#rvMore{margin:6px 0 12px}
 .rvcard textarea{min-height:56px}
 @media(max-width:700px){.rvcard{grid-template-columns:1fr}}
 .followbox{background:#fff8e6;border:1px solid #f2d9a8;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:13px}
@@ -2062,37 +2063,48 @@ async function setReview(p, idx, review, extra) {
   const np = clone(p); Object.assign(np, extra || {}); np.images[idx].review = review;
   updateProp(await API.save(np));
 }
+let rvShown = 10;
+const rvDraft = {};
+const thumbUrl = (u, w) => String(u).replace(/([?&]sz=)w\d+/, '$1w' + w);
 function renderReview() {
   const box = $('#rvList'); if (!box) return;
   const items = [];
   state.props.forEach(p => (p.images || []).forEach((im, i) => { if (revOf(im) === 'pending') items.push({p, im, i}); }));
   const n = items.length;
   $('#rvBadge').textContent = n; $('#rvBadge').style.display = n && remote() ? '' : 'none';
-  box.innerHTML = items.map(({p, im, i}) => `
+  // keep text the reviewer has typed but not saved yet
+  box.querySelectorAll('.rvcard').forEach(c => { const k = c.dataset.p + ':' + c.dataset.i, e = c.querySelector('[data-f=desc_en]'), m = c.querySelector('[data-f=desc_mr]'); if (e && m) rvDraft[k] = {en: e.value, mr: m.value}; });
+  const shown = items.slice(0, rvShown);
+  box.innerHTML = (n ? `<p class="hint" style="margin:0 0 6px">Showing ${shown.length} of ${n} waiting.</p>` : '') + shown.map(({p, im, i}) => {
+    const d = rvDraft[p.id + ':' + i], en = d ? d.en : (p.desc_en || ''), mr = d ? d.mr : (p.desc_mr || '');
+    return `
     <div class="rvcard" data-p="${esc(p.id)}" data-i="${i}">
-      <div><a href="${esc(safeImgUrl(im.url))}" target="_blank" rel="noopener noreferrer"><img src="${esc(safeImgUrl(im.url))}" alt=""></a><div class="hint">${esc(im.source || '')}, ${esc(im.date || 'date missing')}</div></div>
+      <div><a href="${esc(safeImgUrl(im.url))}" target="_blank" rel="noopener noreferrer"><img loading="lazy" decoding="async" src="${esc(safeImgUrl(thumbUrl(im.url, 480)))}" alt=""></a><div class="hint">${esc(im.source || '')}, ${esc(im.date || 'date missing')}</div></div>
       <div>
         <b>${esc(p.name)}</b> <span class="hint">(${esc(p.road || 'no road')}, ${esc((CATS[p.category] || CATS.other).en)})</span>
-        <label>Observed (English)</label><textarea data-f="desc_en">${esc(p.desc_en || '')}</textarea>
-        <label>काय आढळले (मराठी) <button type="button" class="trbtn" data-rv="tr">Translate from English</button></label><textarea data-f="desc_mr">${esc(p.desc_mr || '')}</textarea>
+        <label>Observed (English)</label><textarea data-f="desc_en">${esc(en)}</textarea>
+        <label>काय आढळले (मराठी) <button type="button" class="trbtn" data-rv="tr">Translate from English</button></label><textarea data-f="desc_mr">${esc(mr)}</textarea>
         <div class="row-actions" style="margin-top:8px">
           <button class="primary" data-rv="approved">Approve</button><button class="danger" data-rv="rejected">Reject</button>
           <button data-rv="edit">Edit / blur photo</button><button data-rv="text">Save text only</button><button data-rv="open">Open entry</button>
         </div>
       </div>
-    </div>`).join('') || '<p class="hint">Nothing is waiting for review.</p>';
+    </div>`; }).join('') + (n > shown.length ? `<button type="button" id="rvMore" data-rv="more">Show ${Math.min(10, n - shown.length)} more (${n - shown.length} not shown)</button>` : '') + (n ? '' : '<p class="hint">Nothing is waiting for review.</p>');
 }
 function bindReview() {
   $('#eTr').onclick = async () => { const t = await translateToMr($('#eDescEn').value, $('#eDescMr')); if (t) $('#eDescMr').value = t; };
   $('#rvList').addEventListener('click', async e => {
     const b = e.target.closest('button[data-rv]'); if (!b) return;
+    if (b.dataset.rv === 'more') { rvShown += 10; return renderReview(); }
     const card = b.closest('.rvcard'), p = state.props.find(x => x.id === card.dataset.p), idx = +card.dataset.i; if (!p) return;
     const text = {desc_en: card.querySelector('[data-f=desc_en]').value.trim(), desc_mr: card.querySelector('[data-f=desc_mr]').value.trim()};
     try {
       if (b.dataset.rv === 'tr') { const mr = card.querySelector('[data-f=desc_mr]'), t = await translateToMr(card.querySelector('[data-f=desc_en]').value, mr); if (t) mr.value = t; return; }
       if (b.dataset.rv === 'open') return openView(p);
       if (b.dataset.rv === 'edit') return editSavedImage(p, idx);
-      if (b.dataset.rv === 'text') { updateProp(await API.save(Object.assign(clone(p), text))); return toast('Text saved.'); }
+      const dk = p.id + ':' + idx;
+      if (b.dataset.rv === 'text') { delete rvDraft[dk]; updateProp(await API.save(Object.assign(clone(p), text))); return toast('Text saved.'); }
+      delete rvDraft[dk];
       await setReview(p, idx, b.dataset.rv, text); toast(b.dataset.rv === 'approved' ? 'Approved.' : 'Rejected.');
     } catch (err) { toast(err.message, 5000); }
   });
