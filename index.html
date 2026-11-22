@@ -455,6 +455,7 @@ header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header:
       <div id="mapNote" class="hint" style="margin:0 0 6px"></div>
       <div id="map"></div>
     </div>
+    <div id="pkBar" class="followbox" style="display:none;margin-bottom:8px"></div>
     <div id="list"></div>
   </div>
 </section>
@@ -958,7 +959,7 @@ const API = {
 /* ============================================================
    State and rendering
    ============================================================ */
-const state = {props: [], editing: null, pending: [], viewing: null, sel: new Set()};
+const state = {props: [], editing: null, pending: [], viewing: null, sel: new Set(), pk: new Set()};
 let map, layer;
 
 let lastSync = '';
@@ -1016,14 +1017,14 @@ function statusBadge(p) { const st = STATUS[p.status] || STATUS.draft; const lab
 
 function renderList() {
   fillAddedBy();
-  const rows = filtered(), el = $('#list');
+  const rows = filtered(), el = $('#list'); setTimeout(renderPkBar, 0);
   if (!rows.length) { el.innerHTML = `<div class="empty">${state.props.length ? 'No records match these filters.' : 'No properties yet. Use "+ Add property" or "Bulk add names".'}</div>`; return; }
   el.innerHTML = rows.map(p => {
     const img = (p.images || [])[0];
     return `<div class="card" data-id="${esc(p.id)}">
       ${img ? `<img class="thumb" src="${esc(safeImgUrl(img.url))}" alt="" loading="lazy">` : `<div class="thumb"></div>`}
       <div>
-        <h3>${esc(p.name)}${p.name_mr ? ' <span class="hint">/ ' + esc(p.name_mr) + '</span>' : ''}</h3>
+        <h3><input type="checkbox" class="pk" data-pk="1" title="Tick to select for a bulk action" ${state.pk.has(p.id) ? 'checked' : ''} style="width:auto;margin:0 6px 0 0;vertical-align:middle">${esc(p.name)}${p.name_mr ? ' <span class="hint">/ ' + esc(p.name_mr) + '</span>' : ''}</h3>
         <div>${statusBadge(p)}${followChip(p)}${badge(p.road || 'Road not set')}${badge((CATS[p.category] || CATS.other).en)}${(p.images||[]).length ? badge((p.images.length) + ' image(s)') : badge('no image')}</div>
         <div class="hint">${esc(p.desc_en || '')}</div>
         <div class="row-actions">
@@ -1036,6 +1037,11 @@ function renderList() {
   }).join('');
 }
 $('#list').addEventListener('click', e => {
+  if (e.target.dataset && e.target.dataset.pk) {
+    const id = e.target.closest('.card').dataset.id;
+    if (e.target.checked) state.pk.add(id); else state.pk.delete(id);
+    renderPkBar(); return;
+  }
   const card = e.target.closest('.card'); if (!card) return;
   const p = state.props.find(x => x.id === card.dataset.id); if (!p) return;
   const act = e.target.dataset.act;
@@ -1243,15 +1249,60 @@ $('#eFoodCheck').onclick = () => window.open(FOSCOS_URL, '_blank', 'noopener');
 /* ============================================================
    Edit dialog
    ============================================================ */
-function newFdaReport(src) {
-  const same = state.props.find(x => x.category === 'food' && x.road === src.road && String(x.name || '').trim().toLowerCase() === String(src.name || '').trim().toLowerCase());
-  if (same) { toast('This place already has a food safety (FDA) report. Opening it.', 4500); openEdit(same); return; }
-  const day = todayISO();
-  const rec = {id: '', name: src.name, name_mr: src.name_mr || '', road: src.road || '', category: 'food', desc_en: '', desc_mr: '',
+const COUNTERPART = {
+  food: {en: 'Food is sold from this place. Please inspect it for display of the FSSAI licence, cleanliness and food safety.',
+         mr: 'या ठिकाणी अन्नपदार्थांची विक्री होत असल्याचे दिसते. कृपया एफएसएसएआय परवान्याचे प्रदर्शन, स्वच्छता आणि अन्न सुरक्षेबाबत तपासणी करावी.'},
+  footpath: {en: 'This food stall or shop appears to occupy the footpath or the road margin. Please inspect and verify.',
+             mr: 'हा खाद्यपदार्थ विक्रीचा स्टॉल किंवा दुकान पदपथावर किंवा रस्त्याच्या कडेच्या जागेवर असल्याचे दिसते. कृपया पाहणी करून खात्री करावी.'}
+};
+function counterpartOf(src, cat) {
+  const key = x => String(x.name || '').trim().toLowerCase() + '|' + (x.road || '');
+  const same = state.props.find(x => x.id !== src.id && (cat === 'food' ? x.category === 'food' : x.category !== 'food') && key(x) === key(src));
+  if (same) return {same};
+  const t = COUNTERPART[cat] || {en: '', mr: ''}, who = me() || 'someone';
+  return {rec: {id: '', name: src.name, name_mr: src.name_mr || '', road: src.road || '', category: cat, desc_en: t.en, desc_mr: t.mr,
     maps_url: src.maps_url || '', lat: src.lat ?? null, lng: src.lng ?? null,
     images: JSON.parse(JSON.stringify(src.images || [])), verification: 'pending', verification_note: '', status: 'draft', complaint_date: '', pmc_ref: '',
-    history: [day + ': FDA report started from the existing entry for this place (' + (me() || 'someone') + ')'], updated_by: me()};
-  openEdit(rec);
+    history: [todayISO() + ': ' + (cat === 'food' ? 'FDA' : 'PMC') + ' report started from the existing entry for this place (' + who + ')'], updated_by: who}};
+}
+function renderPkBar() {
+  const bar = $('#pkBar'); if (!bar) return;
+  const shown = new Set(filtered().map(p => p.id));
+  const picked = state.props.filter(p => state.pk.has(p.id) && shown.has(p.id));
+  const nonFood = picked.filter(p => p.category !== 'food').length, food = picked.length - nonFood;
+  bar.style.display = '';
+  bar.innerHTML = `<b>Bulk actions:</b> <button type="button" id="pkAll">Select all shown (${shown.size})</button> <button type="button" id="pkNone">Clear</button> <span class="hint">${picked.length} selected</span>
+    ${nonFood ? `<button type="button" id="pkFda" class="primary">Add FDA report for ${nonFood} selected</button>` : ''}
+    ${food ? `<button type="button" id="pkPmc" class="primary">Add PMC (footpath) report for ${food} selected</button>` : ''}
+    ${picked.length ? '<span class="hint">Creates separate drafts for review. Existing entries are not changed, and places that already have one are skipped.</span>' : '<span class="hint">Tick entries in the list to add FDA or PMC reports for many places at once.</span>'}`;
+}
+async function bulkCounterpart(cat) {
+  const shown = new Set(filtered().map(p => p.id));
+  const src = state.props.filter(p => state.pk.has(p.id) && shown.has(p.id) && (cat === 'food' ? p.category !== 'food' : p.category === 'food'));
+  if (!src.length) return;
+  const label = cat === 'food' ? 'FDA' : 'PMC';
+  if (!confirm('Create ' + label + ' draft reports for ' + src.length + ' place(s)? Each is a new draft with a short neutral description, to review before it goes into a letter.')) return;
+  let made = 0, skipped = 0, failed = 0;
+  for (const p of src) {
+    const r = counterpartOf(p, cat);
+    if (r.same) { skipped++; continue; }
+    try { const saved = await API.save(r.rec); state.props.push(saved); made++; toast('Creating ' + label + ' reports: ' + made + ' of ' + src.length + '...', 2000); }
+    catch (err) { failed++; }
+  }
+  state.pk.clear(); renderAll();
+  toast(made + ' ' + label + ' draft(s) created' + (skipped ? ', ' + skipped + ' skipped (already exist)' : '') + (failed ? ', ' + failed + ' failed, try again' : '') + '.', 7000);
+}
+document.addEventListener('click', e => {
+  const id = e.target.id;
+  if (id === 'pkAll') { filtered().forEach(p => state.pk.add(p.id)); renderList(); }
+  else if (id === 'pkNone') { state.pk.clear(); renderList(); }
+  else if (id === 'pkFda') bulkCounterpart('food');
+  else if (id === 'pkPmc') bulkCounterpart('footpath');
+});
+function newFdaReport(src) {
+  const r = counterpartOf(src, 'food');
+  if (r.same) { toast('This place already has a food safety (FDA) report. Opening it.', 4500); openEdit(r.same); return; }
+  openEdit(r.rec);
   $('#eTitle').textContent = 'New FDA (food safety) report for this place';
   $('#eDelete').style.display = 'none';
   toast('Tick the food safety points you can see in the photo, then Save. The PMC entry is not changed.', 6000);
