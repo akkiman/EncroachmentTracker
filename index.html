@@ -1628,6 +1628,11 @@ function letterRows() {
     (!rd || (rd === 'ready' ? (p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'notready' ? !(p.verification !== 'permitted' && okImgs(p).length > 0) : rd === 'due' ? followUp(p).due : rd === 'awaiting' ? (followUp(p).sent && !followUp(p).closed) : !followUp(p).sent)) &&
     (!only || state.sel.has(p.id)));
 }
+function selShown() { const vis = new Set(letterRows().map(p => p.id)); return state.props.filter(p => state.sel.has(p.id) && vis.has(p.id)); }
+function countText(rows, inLetter) {
+  const vis = selShown().length, hidden = state.sel.size - vis;
+  return `${rows.length} shown, ${vis} selected, ${inLetter} will go into the letter.` + (hidden > 0 ? ` ${hidden} other ticked entr${hidden === 1 ? 'y is' : 'ies are'} hidden by the filters and not in the letter.` : '');
+}
 function renderLetterSel() {
   const rows = letterRows(), groups = {};
   rows.forEach(p => (groups[p.road || 'No road'] = groups[p.road || 'No road'] || []).push(p));
@@ -1635,16 +1640,16 @@ function renderLetterSel() {
     const iss = issues(p), ok = p.verification !== 'permitted' && okImgs(p).length > 0;
     return `<label><input type="checkbox" data-id="${esc(p.id)}" ${state.sel.has(p.id) ? 'checked' : ''}><span>${esc(p.name)} <span class="hint">(${esc((CATS[p.category] || CATS.other).en)}${p.pmc_ref ? ', ref ' + esc(p.pmc_ref) : ''})</span> ${ok ? '<span class="revchip approved">ready</span>' : '<span class="revchip pending">not ready</span>'}${p.verification === 'permitted' ? '<br><span class="issue">marked permitted, will be left out</span>' : (iss.length ? `<br><span class="issue">${esc(iss.join(', '))}</span>` : '')}</span></label>`;
   }).join('')).join('') : '<div class="empty" style="margin:8px">No properties match these filters.</div>';
-  const inLetter = state.props.filter(p => state.sel.has(p.id) && forTo(p) && p.verification !== 'permitted' && okImgs(p).length).length;
-  $('#lCount').textContent = `${rows.length} shown, ${state.sel.size} selected, ${inLetter} will go into the letter.`;
+  const inLetter = selShown().filter(p => p.verification !== 'permitted' && okImgs(p).length).length;
+  $('#lCount').textContent = countText(rows, inLetter);
 }
 $('#lSel').addEventListener('change', e => { const id = e.target.dataset.id; if (!id) return; e.target.checked ? state.sel.add(id) : state.sel.delete(id); renderLetter(); renderLetterCount(); });
-function renderLetterCount() { const rows = letterRows(); const inLetter = state.props.filter(p => state.sel.has(p.id) && forTo(p) && p.verification !== 'permitted' && okImgs(p).length).length; $('#lCount').textContent = `${rows.length} shown, ${state.sel.size} selected, ${inLetter} will go into the letter.`; }
+function renderLetterCount() { const rows = letterRows(); $('#lCount').textContent = countText(rows, selShown().filter(p => p.verification !== 'permitted' && okImgs(p).length).length); }
 $('#lSel').addEventListener('click', e => { const b = e.target.closest('button[data-grp]'); if (!b) return; letterRows().filter(p => (p.road || 'No road') === b.dataset.grp).forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); });
 $('#lAll').onclick = () => { letterRows().forEach(p => state.sel.add(p.id)); renderLetterSel(); renderLetter(); };
 $('#lNone').onclick = () => { state.sel.clear(); renderLetterSel(); renderLetter(); };
-['lRoad', 'lCat', 'lStatus', 'lReady', 'lOnlySel'].forEach(id => $('#' + id).addEventListener('change', renderLetterSel));
-$('#lQ').addEventListener('input', renderLetterSel);
+['lRoad', 'lCat', 'lStatus', 'lReady', 'lOnlySel'].forEach(id => $('#' + id).addEventListener('change', () => { renderLetterSel(); renderLetter(); }));
+$('#lQ').addEventListener('input', () => { renderLetterSel(); renderLetter(); });
 ['lType', 'lLang', 'lDate', 'lRef', 'lAnnex'].forEach(id => $('#' + id).addEventListener('change', renderLetter));
 function syncLetterTo() { $('#lMarkSent').textContent = 'Mark these as sent to ' + ($('#lTo').value === 'fda' ? 'FDA' : 'PMC'); }
 $('#lTo').addEventListener('change', () => { syncLetterTo(); renderLetterSel(); renderLetter(); });
@@ -1889,7 +1894,7 @@ function annexHTML(c) {
   }).join('');
 }
 function currentLetterContext() {
-  const props = state.props.filter(p => state.sel.has(p.id) && forTo(p) && p.verification !== 'permitted' && okImgs(p).length);
+  const props = selShown().filter(p => p.verification !== 'permitted' && okImgs(p).length);
   return {props, to: $('#lTo').value, s: getS(), type: $('#lType').value, lang: $('#lLang').value, date: $('#lDate').value || todayISO(), ref: $('#lRef').value.trim(), annex: $('#lAnnex').checked};
 }
 function buildLetterHTML(c) {
@@ -1901,7 +1906,7 @@ function buildLetterHTML(c) {
 }
 function renderLetter() {
   const c = currentLetterContext(), box = $('#letterPreview'), warn = $('#lWarn');
-  const noEvidence = state.props.filter(p => state.sel.has(p.id) && forTo(p) && p.verification !== 'permitted' && !okImgs(p).length).length;
+  const noEvidence = selShown().filter(p => p.verification !== 'permitted' && !okImgs(p).length).length;
   if (!c.props.length) { box.innerHTML = '<p class="hint">' + (noEvidence ? noEvidence + ' selected property(ies) have no approved photo yet, so nothing can go into a letter. Approve photos in the Review tab.' : 'Select one or more properties on the left to preview the letter.') + '</p>'; warn.innerHTML = ''; return; }
   const missing = [];
   if (noEvidence) missing.push(noEvidence + ' selected property(ies) left out because no photo is approved yet');
