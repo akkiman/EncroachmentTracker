@@ -1914,7 +1914,7 @@ function renderLetter() {
   if (other) missing.push(other + ' selected ' + (c.to === 'fda' ? 'encroachment' : 'food safety') + ' entr' + (other === 1 ? 'y belongs' : 'ies belong') + ' in the ' + (c.to === 'fda' ? 'PMC' : 'FDA') + ' letter, so ' + (other === 1 ? 'it is' : 'they are') + ' left out here');
   if (c.props.length > 40) missing.push(c.props.length + ' entries in one letter is long to print; consider one letter per road or per batch of about 25');
   if (!c.s.cName) missing.push('your name and address (Settings)');
-  warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. Check your facts before sending. The letter only asks the ' + (c.to === 'fda' ? 'FDA' : 'PMC') + ' to inspect and verify.</div>` : '';
+  warn.innerHTML = missing.length ? `<div class="warnbox">Before sending: ${esc(missing.join('; '))}. Check your facts before sending. The letter only asks ${c.to === 'fda' ? 'the FDA' : 'PMC'} to inspect and verify.</div>` : '';
   box.innerHTML = buildLetterHTML(c);
 }
 $('#lPrint').onclick = () => { if (!currentLetterContext().props.length) return toast('Select at least one property.'); window.print(); };
