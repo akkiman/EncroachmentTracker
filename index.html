@@ -608,7 +608,7 @@ header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header:
       <div><label>काय आढळले (मराठी) <button type="button" class="trbtn" id="eTr">Translate from English</button></label><textarea id="eDescMr"></textarea></div>
     </div>
     <div id="eFoodBox" class="warnbox" style="display:none;background:#f1f7f2;border-color:#bcd9c4;color:#1d3b27">
-      <b>Food safety checklist</b> <span class="hint">Tick only what you can see in the photo. Then press the button to add it to the observation in English and Marathi.</span>
+      <b id="eFoodTitle">Food safety checklist</b> <span class="hint">Tick only what you can see in the photo. Then press the button to add it to the observation in English and Marathi.</span>
       <div id="eFoodList"></div>
       <div class="row-actions" style="margin-top:6px"><button type="button" id="eFoodApply">Add ticked points to the observation</button> <button type="button" id="eFoodCheck">Check licence on FSSAI FoSCoS</button></div>
       <div class="hint" style="margin-top:4px">If a licence number is visible, check it on FoSCoS (14 digits). A missing board in the photo is not proof of a missing licence, so the letter only says "not visible".</div>
@@ -1181,15 +1181,23 @@ const FOOD_POINTS = [
   {k:'ground', en:'Food or utensils appear to be kept directly on the ground.', mr:'अन्नपदार्थ किंवा भांडी थेट जमिनीवर ठेवलेली दिसतात.'},
   {k:'wash',   en:'No handwashing or clean water arrangement is visible.', mr:'हात धुण्याची किंवा स्वच्छ पाण्याची व्यवस्था दिसत नाही.'}
 ];
+const FOOT_POINTS = [
+  {k:'lpg',    en:'A gas cylinder appears to be used for cooking on the footpath, close to customers.', mr:'पदपथावर ग्राहकांच्या जवळ स्वयंपाकासाठी गॅस सिलिंडर वापरल्याचे दिसते.'},
+  {k:'frz',    en:'A deep freezer or refrigerator appears to be placed on the footpath.', mr:'पदपथावर डीप फ्रीजर किंवा रेफ्रिजरेटर ठेवलेला दिसतो.'},
+  {k:'stall',  en:'A food stall or cart appears to occupy the footpath and leaves little room to walk.', mr:'खाद्यपदार्थ स्टॉल किंवा गाडी पदपथ व्यापल्याचे दिसते आणि चालण्यासाठी कमी जागा उरते.'}
+];
+const pointsFor = cat => cat === 'food' ? FOOD_POINTS : (cat === 'footpath' ? FOOT_POINTS : null);
 function renderFoodBox() {
-  const on = $('#eCat').value === 'food', box = $('#eFoodBox'); box.style.display = on ? '' : 'none';
-  if (!on) return;
+  const pts = pointsFor($('#eCat').value), box = $('#eFoodBox'); box.style.display = pts ? '' : 'none';
+  if (!pts) return;
+  $('#eFoodTitle').textContent = $('#eCat').value === 'food' ? 'Food safety checklist' : 'Footpath checklist';
+  $('#eFoodCheck').style.display = $('#eCat').value === 'food' ? '' : 'none';
   const en = $('#eDescEn').value;
-  $('#eFoodList').innerHTML = FOOD_POINTS.map(f => `<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin:4px 0"><input type="checkbox" data-fp="${f.k}" style="width:auto;margin-top:3px" ${en.includes(f.en) ? 'checked' : ''}><span>${esc(f.en)}</span></label>`).join('');
+  $('#eFoodList').innerHTML = pts.map(f => `<label style="display:flex;gap:8px;align-items:flex-start;color:var(--ink);margin:4px 0"><input type="checkbox" data-fp="${f.k}" style="width:auto;margin-top:3px" ${en.includes(f.en) ? 'checked' : ''}><span>${esc(f.en)}</span></label>`).join('');
 }
 $('#eCat').addEventListener('change', renderFoodBox);
 $('#eFoodApply').onclick = () => {
-  const picked = FOOD_POINTS.filter(f => $('#eFoodList [data-fp="' + f.k + '"]').checked);
+  const picked = (pointsFor($('#eCat').value) || []).filter(f => $('#eFoodList [data-fp="' + f.k + '"]').checked);
   let en = $('#eDescEn').value.trim(), mr = $('#eDescMr').value.trim();
   picked.forEach(f => { if (!en.includes(f.en)) en = (en ? en + ' ' : '') + f.en; if (!mr.includes(f.mr)) mr = (mr ? mr + ' ' : '') + f.mr; });
   $('#eDescEn').value = en; $('#eDescMr').value = mr;
@@ -1713,6 +1721,7 @@ function letterEN(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.join(' and ') : 'the area';
   const flex = props.some(p => p.category === 'flex');
+  const gas = props.some(p => /gas cylinder|LPG/i.test(p.desc_en || ''));
   const ri = reminderInfo(props);
   const hdr = `<th>Sr.</th><th>Property / location</th><th>Road</th><th>Observation</th><th>Images (source, date)</th><th>PMC verification</th>${type === 'reminder' ? '<th>Earlier complaint (ref / date)</th>' : ''}`;
   const to = ['The Assistant Municipal Commissioner', esc(s.rName), esc(s.rOffice), 'Pune Municipal Corporation', esc(s.rAddress)].filter(x => x);
@@ -1728,6 +1737,7 @@ function letterEN(c) {
     : `<li>Inspect the listed locations and verify them against the sanctioned plans and permissions.</li>
        <li>Where unauthorised construction, use of margin space or encroachment is found, issue notices and take action under the applicable provisions of law and regulations (including the Maharashtra Regional and Town Planning Act, 1966 and the UDCPR, as applicable).</li>
        <li>Include the footpath and road-space locations in the ongoing anti-encroachment drive, and apply enforcement uniformly to all.</li>
+       ${gas ? '<li>Where a gas cylinder is shown in use for cooking on the footpath, please check the type of cylinder and its safe use, and involve the fire brigade where needed.</li>' : ''}
        ${flex ? '<li>For the flex banners and hoardings listed, verify whether permission or a licence exists for display at that location and, where none is found, have them removed and take action under the applicable provisions of law.</li>' : ''}
        <li>Inform us of the action taken, with a complaint reference number, within 15 days.</li>`;
   return `<div class="lang-en">
@@ -1742,6 +1752,7 @@ function letterEN(c) {
     <p>Thank you for your attention.</p>
     <p>Yours faithfully,<br><br>${esc(s.cName || '')}${s.cOrg ? '<br>' + esc(s.cOrg) : ''}</p>
     ${c.annex ? `<p>Enclosures: Annexures 1 to ${n}</p>` : ''}
+    ${gas ? '<p>Copy to (for information): The Chief Fire Officer, Pune Municipal Corporation Fire Brigade.</p>' : ''}
   </div>`;
 }
 function letterMR(c) {
@@ -1750,6 +1761,7 @@ function letterMR(c) {
   const roads = ROADS.filter(r => r !== 'Other' && props.some(p => p.road === r));
   const roadTxt = roads.length ? roads.map(roadMr).join(' व ') : 'परिसर';
   const flex = props.some(p => p.category === 'flex');
+  const gas = props.some(p => /गॅस सिलिंडर|LPG/i.test(p.desc_mr || '') || /gas cylinder|LPG/i.test(p.desc_en || ''));
   const ri = reminderInfo(props);
   const hdr = `<th>अ.क्र.</th><th>मिळकत / ठिकाण</th><th>रस्ता</th><th>निरीक्षण</th><th>छायाचित्रे (स्रोत, दिनांक)</th><th>मनपा पडताळणी</th>${type === 'reminder' ? '<th>यापूर्वीची तक्रार (क्र. / दिनांक)</th>' : ''}`;
   const to = ['प्रति,', 'मा. सहाय्यक महापालिका आयुक्त,', s.rNameMr ? esc(s.rNameMr) + ',' : '', esc(s.rOfficeMr || s.rOffice) + ',', 'पुणे महानगरपालिका,', esc(s.rAddressMr || s.rAddress)].filter(Boolean);
@@ -1765,6 +1777,7 @@ function letterMR(c) {
     : `<li>वरील ठिकाणांची प्रत्यक्ष पाहणी करून मंजूर आराखडे व परवानग्यांशी पडताळणी करावी.</li>
        <li>अनधिकृत बांधकाम, मोकळ्या जागेचा नियमबाह्य वापर किंवा अतिक्रमण आढळल्यास लागू कायदेशीर तरतुदी व नियमावलीनुसार (महाराष्ट्र प्रादेशिक व नगररचना अधिनियम, १९६६ व UDCPR यांसह, जसे लागू असेल तसे) नोटीस देऊन कारवाई करावी.</li>
        <li>पदपथ व रस्त्यावरील अतिक्रमणांच्या ठिकाणांचा सुरू असलेल्या अतिक्रमण निर्मूलन मोहिमेत समावेश करावा, तसेच कारवाई सर्वांसाठी समान पद्धतीने करावी.</li>
+       ${gas ? '<li>पदपथावर स्वयंपाकासाठी गॅस सिलिंडर वापरल्याचे दिसत असल्यास सिलिंडरचा प्रकार व त्याचा सुरक्षित वापर तपासावा आणि आवश्यक असल्यास अग्निशमन दलाची मदत घ्यावी.</li>' : ''}
        ${flex ? '<li>यादीतील फ्लेक्स बॅनर / होर्डिंग्जबाबत त्या ठिकाणी प्रदर्शनासाठी परवानगी किंवा परवाना आहे का याची पडताळणी करावी आणि परवानगी आढळली नाही तर ते काढून टाकावेत व लागू कायदेशीर तरतुदींनुसार कारवाई करावी.</li>' : ''}
        <li>केलेल्या कार्यवाहीची माहिती व तक्रार क्रमांक १५ दिवसांत कळवावा.</li>`;
   return `<div class="lang-mr">
@@ -1779,6 +1792,7 @@ function letterMR(c) {
     <p>कळावे. आपले सहकार्य अपेक्षित आहे. धन्यवाद.</p>
     <p>विनीत,<br><br>${esc(s.cName || '')}${s.cOrg ? '<br>' + esc(s.cOrg) : ''}</p>
     ${c.annex ? `<p>सोबत: परिशिष्ट १ ते ${N}</p>` : ''}
+    ${gas ? '<p>प्रतिलिपी (माहितीसाठी): मा. मुख्य अग्निशमन अधिकारी, पुणे महानगरपालिका अग्निशमन दल.</p>' : ''}
   </div>`;
 }
 function letterFoodEN(c) {
@@ -2130,7 +2144,7 @@ function helpHtml() {
     <li>The AI suggests the shop or place name, the category and a description. <b>Read it and correct it.</b> It can be wrong.</li>
     <li>Save. The photo shows as <i>pending</i> until an admin approves it.</li>
   </ol>
-  <details><summary>Categories explained</summary><p>Side margin and front margin: open space the building must keep. Footpath: goods, tables, steps or structures on the walkway. Road: on the carriageway. Flex: banners and hoardings. Food safety (FDA): visible licence and hygiene points at a food stall or eatery. Other: anything else, described in words.</p></details>
+  <details><summary>Categories explained</summary><p>Side margin and front margin: open space the building must keep. Footpath: goods, tables, steps, freezers, gas cylinders or structures on the walkway. Road: on the carriageway. Flex: banners and hoardings. Food safety (FDA): visible licence and hygiene points at a food stall or eatery. Other: anything else, described in words.</p></details>
   <details><summary>Reporting a food stall</summary><p>Choose the category <b>Food safety (FDA)</b>. A checklist appears when you edit the entry: no FSSAI licence number visible, newspaper used for food, food uncovered, dark or reused oil, garbage or drain next to the food, food on the ground, no handwashing. Tick only what the photo shows. If a stall is also on the footpath, make two entries with the same name, one Footpath and one Food safety. A missing licence board in a photo is not proof of a missing licence, so the letter only says "not visible". If you can read a licence number, check it on FoSCoS (14 digits). Never write about the vendor, only about the conditions.</p></details>
   <details><summary>Why was my photo rejected or blurred?</summary><p>Admins may reject photos that are unclear, show the wrong place, or show people or number plates. Admins can also blur faces. Add a clearer photo to the same entry.</p></details>
 
