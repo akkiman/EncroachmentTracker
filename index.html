@@ -654,6 +654,7 @@ header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header:
   </div>
   <div class="dfoot">
     <button id="eDelete" class="danger" style="margin-right:auto">Delete</button>
+    <button id="eFda" type="button" title="Start a separate food safety report to the FDA for this same place">+ FDA report for this place</button>
     <button id="eCancel">Cancel</button>
     <button id="eSave" class="primary">Save</button>
   </div>
@@ -1029,6 +1030,7 @@ function renderList() {
           <button data-act="view">View</button><button data-act="edit">Edit</button>
           ${p.lat != null && p.lng != null && !isNaN(p.lat) ? `<button data-act="locate">Show on map</button>` : `<button data-act="edit" class="primary">Set location</button>`}
           ${mapsUrlFor(p) ? `<button data-act="maps">Google Maps</button>` : ''}
+          ${p.category !== 'food' ? `<button data-act="fda" title="Start a separate food safety report to the FDA for this same place">+ FDA report</button>` : ''}
         </div>
       </div></div>`;
   }).join('');
@@ -1037,7 +1039,7 @@ $('#list').addEventListener('click', e => {
   const card = e.target.closest('.card'); if (!card) return;
   const p = state.props.find(x => x.id === card.dataset.id); if (!p) return;
   const act = e.target.dataset.act;
-  if (act === 'locate') locateOnMap(p); else if (act === 'edit') openEdit(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank', 'noopener');
+  if (act === 'locate') locateOnMap(p); else if (act === 'edit') openEdit(p); else if (act === 'fda') newFdaReport(p); else if (act === 'maps') window.open(mapsUrlFor(p), '_blank', 'noopener');
   else { openView(p); if (map && p.lat != null) map.setView([p.lat, p.lng], 18); }
 });
 
@@ -1241,6 +1243,19 @@ $('#eFoodCheck').onclick = () => window.open(FOSCOS_URL, '_blank', 'noopener');
 /* ============================================================
    Edit dialog
    ============================================================ */
+function newFdaReport(src) {
+  const same = state.props.find(x => x.category === 'food' && x.road === src.road && String(x.name || '').trim().toLowerCase() === String(src.name || '').trim().toLowerCase());
+  if (same) { toast('This place already has a food safety (FDA) report. Opening it.', 4500); openEdit(same); return; }
+  const day = todayISO();
+  const rec = {id: '', name: src.name, name_mr: src.name_mr || '', road: src.road || '', category: 'food', desc_en: '', desc_mr: '',
+    maps_url: src.maps_url || '', lat: src.lat ?? null, lng: src.lng ?? null,
+    images: JSON.parse(JSON.stringify(src.images || [])), verification: 'pending', verification_note: '', status: 'draft', complaint_date: '', pmc_ref: '',
+    history: [day + ': FDA report started from the existing entry for this place (' + (me() || 'someone') + ')'], updated_by: me()};
+  openEdit(rec);
+  $('#eTitle').textContent = 'New FDA (food safety) report for this place';
+  $('#eDelete').style.display = 'none';
+  toast('Tick the food safety points you can see in the photo, then Save. The PMC entry is not changed.', 6000);
+}
 function openEdit(p) {
   state.editing = p ? JSON.parse(JSON.stringify(p)) : {id:'', name:'', road:'', category:'front_margin', status:'draft', verification:'pending', images:[], history:[]};
   const e = state.editing;
@@ -1255,6 +1270,7 @@ function openEdit(p) {
   state.pending = (e.images || []).map(i => Object.assign({existing:true, key:uid()}, i));
   renderImgRows();
   $('#eDelete').style.display = p && (!remote() || sess().role === 'admin') ? '' : 'none';
+  $('#eFda').style.display = p && p.id && e.category !== 'food' ? '' : 'none';
   $('#dlgEdit').showModal();
 }
 function renderImgRows() {
@@ -1356,6 +1372,7 @@ async function saveEdit() {
   btn.disabled = false; btn.textContent = 'Save';
 }
 $('#eSave').onclick = saveEdit;
+$('#eFda').onclick = () => { const src = state.editing; $('#dlgEdit').close(); newFdaReport(src); };
 $('#eCancel').onclick = $('#eClose').onclick = () => $('#dlgEdit').close();
 $('#eDelete').onclick = async () => {
   if (!confirm('Delete "' + (state.editing.name || 'this property') + '"?' + (remote() ? ' A full copy is kept in the audit log.' : '') + ' Images stay in the Drive folder.')) return;
