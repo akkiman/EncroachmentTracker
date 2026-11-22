@@ -438,6 +438,10 @@ header{border-bottom:0;box-shadow:0 1px 0 var(--line);margin-bottom:10px}header:
     <select id="fRoad"><option value="">All roads</option></select>
     <select id="fCat"><option value="">All categories</option></select>
     <select id="fStatus"><option value="">All statuses</option></select>
+    <select id="fBy" title="Filter by who added the record"><option value="">Added by anyone</option></select>
+    <select id="fImg" title="Filter by photos"><option value="">With or without photos</option><option value="yes">Has photos</option><option value="no">No photos</option></select>
+    <label class="hint" style="display:flex;align-items:center;gap:4px;white-space:nowrap">Added from <input type="date" id="fSince" title="Only records added on or after this date"></label>
+    <select id="fSort" title="Sort the list"><option value="new">Sort: newest added</option><option value="old">Sort: oldest added</option><option value="az">Sort: name A to Z</option><option value="za">Sort: name Z to A</option><option value="upd">Sort: recently updated</option><option value="road">Sort: road, then name</option></select>
     <button id="btnPhoto" class="primary">Add from photos (AI)</button>
     <button id="btnAdd">+ Add manually</button>
     <button id="btnBulk">Bulk add names</button>
@@ -979,16 +983,38 @@ function renderAll() { fillRoadSelects(); renderList(); renderMap(); renderLette
 function fillSelect(el, items, firstLabel) {
   el.innerHTML = (firstLabel ? `<option value="">${esc(firstLabel)}</option>` : '') + items.map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
 }
+function fillAddedBy() {
+  const el = $('#fBy'); if (!el) return;
+  const cur = el.value, names = [...new Set(state.props.map(p => p.created_by).filter(Boolean))].sort((x, y) => x.localeCompare(y));
+  el.innerHTML = '<option value="">Added by anyone</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  el.value = names.includes(cur) ? cur : '';
+}
 function filtered() {
   const q = $('#q').value.trim().toLowerCase(), r = $('#fRoad').value, c = $('#fCat').value, s = $('#fStatus').value;
-  return state.props.filter(p =>
+  const by = $('#fBy').value, img = $('#fImg').value, since = $('#fSince').value, sort = $('#fSort').value;
+  const day = v => String(v || '').slice(0, 10);
+  const rows = state.props.filter(p =>
     (!r || p.road === r) && (!c || p.category === c) && (!s || p.status === s) &&
+    (!by || p.created_by === by) &&
+    (!img || (img === 'yes') === ((p.images || []).length > 0)) &&
+    (!since || (day(p.created_at) && day(p.created_at) >= since)) &&
     (!q || [p.name, p.name_mr, p.desc_en, p.desc_mr, p.pmc_ref].join(' ').toLowerCase().includes(q)));
+  const nm = p => String(p.name || '').toLowerCase(), tm = (p, k) => String(p[k] || '');
+  const byName = (x, y) => nm(x).localeCompare(nm(y), undefined, {numeric: true});
+  const cmp = {
+    new: (x, y) => tm(y, 'created_at').localeCompare(tm(x, 'created_at')) || byName(x, y),
+    old: (x, y) => tm(x, 'created_at').localeCompare(tm(y, 'created_at')) || byName(x, y),
+    az: byName, za: (x, y) => byName(y, x),
+    upd: (x, y) => tm(y, 'updated_at').localeCompare(tm(x, 'updated_at')) || byName(x, y),
+    road: (x, y) => String(x.road || '').localeCompare(String(y.road || '')) || byName(x, y)
+  }[sort] || byName;
+  return rows.slice().sort(cmp);
 }
 function badge(txt, cls = '', style = '') { return `<span class="badge ${cls}" style="${style}">${esc(txt)}</span>`; }
 function statusBadge(p) { const st = STATUS[p.status] || STATUS.draft; const label = (p.status === 'reported' && p.category === 'food') ? 'Reported to FDA' : st.en; return badge(label, 'st', `background:${st.badge || st.color}`); }
 
 function renderList() {
+  fillAddedBy();
   const rows = filtered(), el = $('#list');
   if (!rows.length) { el.innerHTML = `<div class="empty">${state.props.length ? 'No records match these filters.' : 'No properties yet. Use "+ Add property" or "Bulk add names".'}</div>`; return; }
   el.innerHTML = rows.map(p => {
@@ -2377,7 +2403,7 @@ function init() {
   fillSelect($('#eVer'), Object.entries(VER).map(([k, v]) => [k, v.en]));
   fillSelect($('#eStatus'), Object.entries(STATUS).map(([k, v]) => [k, v.en]));
   $('#lDate').value = todayISO();
-  ['q', 'fRoad', 'fCat', 'fStatus'].forEach(id => $('#' + id).addEventListener('input', () => { renderMap.fitted = false; renderList(); renderMap(); }));
+  ['q', 'fRoad', 'fCat', 'fStatus', 'fBy', 'fImg', 'fSince', 'fSort'].forEach(id => $('#' + id).addEventListener('input', () => { renderMap.fitted = false; renderList(); renderMap(); }));
   $('#btnAdd').onclick = () => openEdit(null);
   $('#btnRefresh').onclick = () => loadData(true);
   $$('nav button').forEach(b => b.onclick = () => {
